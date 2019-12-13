@@ -1,0 +1,10 @@
+name "ft"
+description "A minimal D application."
+authors "sobaya"
+copyright "Copyright © 2019, sobaya"
+license "proprietary"
+
+targetType "library"
+targetPath "lib"
+
+dependency "derelict-ft" version="~>2.0.0-beta.4"

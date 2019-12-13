@@ -1,0 +1,11 @@
+name "event"
+description "A minimal D application."
+authors "sobaya"
+copyright "Copyright © 2019, sobaya"
+license "proprietary"
+
+targetType "library"
+targetPath "lib"
+
+dependency "sbylib:glfw" path="../glfw"
+dependency "sbylib:math" path="../math"

@@ -1,0 +1,8 @@
+name "sbylib-engine-example"
+description "A minimal D application."
+authors "sobaya"
+copyright "Copyright © 2019, sobaya"
+license "proprietary"
+
+dependency "sbylib-engine" version="*"
+dependency "sbylib-graphics" version="*"

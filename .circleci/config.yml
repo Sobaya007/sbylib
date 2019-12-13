@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: dlang2/dmd-circleci:2.087.1 
+
+    steps:
+      - checkout
+
+      - run:
+          name: Test
+          command: dub test
+
