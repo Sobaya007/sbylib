@@ -17,17 +17,18 @@ dependency "sbylib:graphics" version="*"
 dependency "sbylib:math" version="*"
 dependency "sbylib:vulkan" version="*"
 
-subPackage "./assimp"
-subPackage "./engine"
-subPackage "./event"
-subPackage "./fi"
-subPackage "./ft"
-subPackage "./glfw"
-subPackage "./graphics"
-subPackage "./math"
-subPackage "./vulkan"
+subPackage "./sub/assimp"
+subPackage "./sub/engine"
+subPackage "./sub/event"
+subPackage "./sub/fi"
+subPackage "./sub/ft"
+subPackage "./sub/glfw"
+subPackage "./sub/graphics"
+subPackage "./sub/math"
+subPackage "./sub/vulkan"
 
 configuration "unittest" {
+    excludedSourceFiles "source/app.d"
     postRunCommands "dub test :assimp"
     postRunCommands "dub test :engine"
     postRunCommands "dub test :event"
@@ -42,45 +43,45 @@ configuration "unittest" {
 configuration "vulkan-example-white-triangle" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./vulkan/example/source"
-    importPaths "./vulkan/example/source"
+    sourcePaths "./sub/vulkan/example/source"
+    importPaths "./sub/vulkan/example/source"
     versions "WhiteTriangle"
 }
 
 configuration "vulkan-example-per-vertex-triangle" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./vulkan/example/source"
-    importPaths "./vulkan/example/source"
+    sourcePaths "./sub/vulkan/example/source"
+    importPaths "./sub/vulkan/example/source"
     versions "PerVertexTriangle"
 }
 
 configuration "vulkan-example-uniform-triangle" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./vulkan/example/source"
-    importPaths "./vulkan/example/source"
+    sourcePaths "./sub/vulkan/example/source"
+    importPaths "./sub/vulkan/example/source"
     versions "UniformTriangle"
 }
 
 configuration "vulkan-example-texture-rectangle" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./vulkan/example/source"
-    importPaths "./vulkan/example/source"
+    sourcePaths "./sub/vulkan/example/source"
+    importPaths "./sub/vulkan/example/source"
     versions "TextureRectangle"
 }
 
 configuration "glfw-example" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./glfw/example/source"
-    importPaths "./glfw/example/source"
+    sourcePaths "./sub/glfw/example/source"
+    importPaths "./sub/glfw/example/source"
 }
 
 configuration "engine-example" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./engine/example/source"
-    importPaths "./engine/example/source"
+    sourcePaths "./sub/engine/example/source"
+    importPaths "./sub/engine/example/source"
 }
