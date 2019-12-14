@@ -1,0 +1,7 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"bindbc-assimp": "0.0.1",
+		"bindbc-loader": "0.2.1"
+	}
+}

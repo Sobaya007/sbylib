@@ -9,3 +9,8 @@ targetPath "lib"
 
 dependency "bindbc-assimp" version="*"
 dependency "sbylib:math" path="../math"
+
+configuration "unittest" {
+    sourcePaths "example/source"
+    importPaths "example/source"
+}

@@ -16,7 +16,8 @@ void entryPoint(Project proj, ModuleContext context) {
         window = buildWindow();
     }
 
-    auto store = new GlyphStore("./font/consola.ttf", 256);
+    auto fontDir = proj.get!string("fontDir");
+    auto store = new GlyphStore(fontDir.buildPath("consola.ttf"), 256);
     context.pushResource(store);
 
     GlyphGeometry geom;

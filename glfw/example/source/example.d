@@ -1,6 +1,6 @@
 import sbylib.wrapper.glfw;
 
-void main() {
+void entryPoint() {
     Window window;
     with (WindowBuilder()) {
         width = 800;

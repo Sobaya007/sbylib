@@ -1,4 +1,7 @@
+module whiteTriangle.entry;
+
 import std;
+import std.file : fremove = remove;
 import erupted;
 import erupted.vulkan_lib_loader;
 import sbylib.wrapper.vulkan;
@@ -52,27 +55,26 @@ void entryPoint() {
        GLFWが要求する拡張機能も有効化する。
 
      */
-    Instance.CreateInfo instanceCreateInfo = {
-        applicationInfo: {
-            applicationName: "Vulkan Test",
-            applicationVersion: VK_MAKE_VERSION(1,0,0),
-            engineName: "No Engine",
-            engineVersion: VK_MAKE_VERSION(1,0,0),
-            apiVersion : VK_API_VERSION_1_0
-        },
-        enabledLayerNames: [
-            "VK_LAYER_LUNARG_core_validation",
-            "VK_LAYER_LUNARG_standard_validation",
-            "VK_LAYER_LUNARG_parameter_validation",
-            "VK_LAYER_KHRONOS_validation",
-        ],
-        enabledExtensionNames: GLFW.getRequiredInstanceExtensions()
-    };
-
-    enforce(instanceCreateInfo.enabledLayerNames.all!(n =>
-        LayerProperties.getAvailableInstanceLayerProperties().canFind!(l => l.layerName == n)));
-
-    auto instance = new Instance(instanceCreateInfo);
+    Instance instance;
+    {
+        Instance.CreateInfo instanceCreateInfo = {
+            applicationInfo: {
+                applicationName: "Vulkan Test",
+                applicationVersion: VK_MAKE_VERSION(1,0,0),
+                engineName: "No Engine",
+                engineVersion: VK_MAKE_VERSION(1,0,0),
+                apiVersion : VK_API_VERSION_1_0
+            },
+            enabledLayerNames: [
+                "VK_LAYER_LUNARG_standard_validation",
+                "VK_LAYER_KHRONOS_validation",
+            ],
+            enabledExtensionNames: GLFW.getRequiredInstanceExtensions()
+        };
+        instance = new Instance(instanceCreateInfo);
+        enforce(instanceCreateInfo.enabledLayerNames.all!(n =>
+            LayerProperties.getAvailableInstanceLayerProperties().canFind!(l => l.layerName == n)));
+    }
     scope (exit)
         instance.destroy();
 
@@ -93,10 +95,7 @@ void entryPoint() {
        GPUはPhysical DeviceとVulkan内では呼ばれている。
        利用可能なGPUの中で、Surface機能をサポートしているものを採用。
      */
-    auto physDevices = instance.enumeratePhysicalDevices();
-    const gpuIndex = physDevices.countUntil!(p => p.getSurfaceSupport(surface));
-    enforce(gpuIndex != -1, "There are no GPUs with Surface support.");
-    auto gpu = physDevices[gpuIndex];
+    auto gpu = instance.findPhysicalDevice!((PhysicalDevice gpu) => gpu.getSurfaceSupport(surface));
 
 
     /*
@@ -110,11 +109,8 @@ void entryPoint() {
        Queueに突っ込む際はその属性をサポートしているQueueに突っ込まなければならない。
        Queue Familyというのは要はこのQueueの種類のことであり、今回はGraphics属性をサポートしているQueueを採用する。
      */
-    const queueFamilyProperties = gpu.getQueueFamilyProperties();
-    auto graphicsQueueFamilyIndex = cast(uint)queueFamilyProperties
-        .countUntil!((const QueueFamilyProperties prop) =>
-                prop.supports(QueueFamilyProperties.Flags.Graphics));
-    enforce(graphicsQueueFamilyIndex != -1, "There are no queue family with Graphics support.");
+    auto graphicsQueueFamilyIndex = gpu.findQueueFamilyIndex!(prop =>
+            prop.supports(QueueFamilyProperties.Flags.Graphics));
 
 
     /*
@@ -157,12 +153,15 @@ void entryPoint() {
             Protectedになると、よくないメモリアクセスでちゃんと怒ってくられるようになるっぽい。
 
      */
-    CommandPool.CreateInfo commandPoolCreateInfo = {
-        flags: CommandPool.CreateInfo.Flags.ResetCommandBuffer
-             | CommandPool.CreateInfo.Flags.Protected,
-        queueFamilyIndex: graphicsQueueFamilyIndex
-    };
-    auto commandPool = new CommandPool(device, commandPoolCreateInfo);
+    CommandPool commandPool;
+    {
+        CommandPool.CreateInfo commandPoolCreateInfo = {
+            flags: CommandPool.CreateInfo.Flags.ResetCommandBuffer
+                 | CommandPool.CreateInfo.Flags.Protected,
+            queueFamilyIndex: graphicsQueueFamilyIndex
+        };
+        commandPool = new CommandPool(device, commandPoolCreateInfo);
+    }
     scope (exit)
         commandPool.destroy();
 
@@ -221,15 +220,13 @@ void entryPoint() {
     scope (exit)
         swapchain.destroy();
 
-    auto swapchainImages = swapchain.getImages();
-
 
     /*
        SwapchainからImageViewを作成
 
        ImageViewとはその名の通り、Swapchain内のImageに対するView(Slice)である。
      */
-    auto swapchainImageViews = swapchainImages.map!((Image image) {
+    auto swapchainImageViews = swapchain.getImages().map!((Image image) {
         ImageView.CreateInfo info = {
             image: image,
             viewType: ImageViewType.Type2D,
@@ -335,13 +332,12 @@ void entryPoint() {
      */
     struct VertexData {
         float[2] pos;
-        float[3] color;
     }
 
     static VertexData[3] vertices = [
-        VertexData([ 0.0f, -0.5f], [1.0f, 0.0f, 0.0f]),
-        VertexData([+0.5f, +0.5f], [0.0f, 1.0f, 0.0f]),
-        VertexData([-0.5f, +0.5f], [0.0f, 0.0f, 1.0f]),
+        VertexData([ 0.0f, -0.5f]),
+        VertexData([+0.5f, +0.5f]),
+        VertexData([-0.5f, +0.5f]),
     ];
 
 
@@ -394,7 +390,10 @@ void entryPoint() {
        Shader Module作成
      */
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.vert"));
+    scope (exit) fremove("vert.spv");
+
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.frag"));
+    scope (exit) fremove("frag.spv");
 
     ShaderModule.CreateInfo vsShaderCreateInfo = {
         code: cast(ubyte[])read("vert.spv")
@@ -442,19 +441,14 @@ void entryPoint() {
         vertexInputState: {
             vertexBindingDescriptions: [{
                 binding: 0,
-                stride: VertexData.sizeof,
+                stride: (float[2]).sizeof,
                 inputRate: VertexInputRate.Vertex
             }],
             vertexAttributeDescriptions: [{
                 location: 0,
                 binding: 0,
                 format: VK_FORMAT_R32G32_SFLOAT,
-                offset: VertexData.pos.offsetof
-            },{
-                location: 1,
-                binding: 0,
-                format: VK_FORMAT_R32G32B32_SFLOAT,
-                offset: VertexData.color.offsetof
+                offset: 0
             }]
         },
         inputAssemblyState: {

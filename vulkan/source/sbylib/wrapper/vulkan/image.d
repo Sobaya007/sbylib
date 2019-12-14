@@ -40,6 +40,8 @@ class Image {
 
         auto info = _info.vkTo();
 
+        enforce(device !is null);
+        enforce(device.device !is null);
         enforceVK(vkCreateImage(device.device, &info, null, &image));
         enforce(image != VK_NULL_HANDLE);
         this.mustRelease = true;

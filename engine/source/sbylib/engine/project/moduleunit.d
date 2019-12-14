@@ -38,7 +38,8 @@ class Module(RetType) {
     string[] dependencies;
     Promise!(RetType) execution;
     private immutable ubyte[16] hash;
-    CompileErrorException error;
+    CompileErrorException compileError;
+    Exception runtimeError;
 
     this(Project proj, string path) {
         this.path = path;
@@ -47,7 +48,7 @@ class Module(RetType) {
         this.hash = md5Of(readText(path));
         Compiler.compile(path)
         .error((Exception e) {
-            this.error = cast(CompileErrorException)e;
+            this.compileError = cast(CompileErrorException)e;
         })
         .then((DLL dll) {
             this.initFromDLL(dll);
@@ -79,6 +80,8 @@ class Module(RetType) {
         execution = promise!({
             context.bind();
             return func(proj, context);
+        }).error((Exception e) {
+            this.runtimeError = e;
         });
     }
 
@@ -86,8 +89,12 @@ class Module(RetType) {
         return func !is null;
     }
 
-    package bool hasError() {
-        return error !is null;
+    package bool hasCompileError() {
+        return compileError !is null;
+    }
+
+    package bool hasRuntimeError() {
+        return runtimeError !is null;
     }
 
     package bool executed() {

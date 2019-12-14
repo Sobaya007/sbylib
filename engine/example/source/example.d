@@ -4,7 +4,7 @@ import sbylib.event;
 import sbylib.graphics;
 import sbylib.wrapper.glfw;
 
-void main() {
+void entryPoint() {
     Window window;
     with (WindowBuilder()) {
         width = 800;
@@ -28,9 +28,12 @@ void main() {
     });
 
     EngineSetting setting = {
-        projectDirectory: "project"
+        projectDirectory: __FILE_FULL_PATH__.dirName.dirName.buildPath("project")
     };
+    string baseDir = __FILE_FULL_PATH__.dirName.dirName;
     startEngine(setting, [
-        "window": Variant(window)
+        "window": Variant(window),
+        "fontDir": Variant(baseDir.buildPath("font")),
+        "resourceDir": Variant(baseDir.buildPath("resource"))
     ]);
 }

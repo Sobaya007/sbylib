@@ -65,20 +65,17 @@ class Promise(T) {
     }
 
     private void exec(Args...)(T delegate(Args) f, Args args) {
-        try {
+        execWithErrorHandling({
             static if (is(T == void)) {
                 f(args);
             } else {
                 result = f(args).nullable;
             }
-        } catch (Exception e) {
-            this.e = e;
-            // writeln(e.msg);
-        }
+        });
     }
 
     private void exec(Args...)(Promise!T delegate(Args) f, Args args) {
-        try {
+        execWithErrorHandling({
             static if (is(T == void)) {
                 f(args).then({
                     this.task.kill();
@@ -89,9 +86,14 @@ class Promise(T) {
                     this.task.kill();
                 });
             }
+        });
+    }
+
+    private void execWithErrorHandling(void delegate() func) {
+        try {
+            func();
         } catch (Exception e) {
             this.e = e;
-            // writeln(e.msg);
         }
     }
 

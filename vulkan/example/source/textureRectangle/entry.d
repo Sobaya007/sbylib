@@ -1,4 +1,7 @@
+module textureRectangle.entry;
+
 import std;
+import std.file : fremove = remove;
 import erupted;
 import erupted.vulkan_lib_loader;
 import sbylib.wrapper.vulkan;
@@ -62,9 +65,7 @@ void entryPoint() {
             apiVersion : VK_API_VERSION_1_0
         },
         enabledLayerNames: [
-            "VK_LAYER_LUNARG_core_validation",
             "VK_LAYER_LUNARG_standard_validation",
-            "VK_LAYER_LUNARG_parameter_validation",
             "VK_LAYER_KHRONOS_validation",
         ],
         enabledExtensionNames: GLFW.getRequiredInstanceExtensions()
@@ -575,7 +576,10 @@ void entryPoint() {
        Shader Module作成
      */
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.vert"));
+    scope (exit) fremove("vert.spv");
+
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.frag"));
+    scope (exit) fremove("frag.spv");
 
     ShaderModule.CreateInfo vsShaderCreateInfo = {
         code: cast(ubyte[])read("vert.spv")

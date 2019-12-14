@@ -12,7 +12,8 @@ enum ModuleStatus {
     Compiling,
     WaitingForRun,
     Running,
-    CompileError
+    CompileError,
+    RuntimeError
 }
 
 class ModuleStatusList {
@@ -53,6 +54,9 @@ class ModuleStatusList {
             if (value == ModuleStatus.CompileError) {
                 writeln(msg[key].split("\n").map!(s => " ".repeat.take(32).join ~ s).join("\n").magenda);
             }
+            if (value == ModuleStatus.RuntimeError) {
+                writeln(msg[key].split("\n").map!(s => " ".repeat.take(32).join ~ s).join("\n").magenda);
+            }
         }
     }
 
@@ -72,6 +76,8 @@ class ModuleStatusList {
             case ModuleStatus.Running:
                 return status.to!string.green;
             case ModuleStatus.CompileError:
+                return status.to!string.red;
+            case ModuleStatus.RuntimeError:
                 return status.to!string.red;
         }
     }
@@ -130,8 +136,16 @@ class Project {
             });
         });
 
-        when(mod.hasError).once({
-            status[file] = tuple(ModuleStatus.CompileError, mod.error.msg);
+        when(mod.hasCompileError).once({
+            status[file] = tuple(ModuleStatus.CompileError, mod.compileError.msg);
+
+            when(shouldReload(mod)).once({
+                this.loadSingle(file);
+            });
+        });
+
+        when(mod.hasRuntimeError).once({
+            status[file] = tuple(ModuleStatus.RuntimeError, mod.runtimeError.toString());
 
             when(shouldReload(mod)).once({
                 this.loadSingle(file);
@@ -177,8 +191,8 @@ class Project {
     }
 
     bool shouldFinish() {
-        return status.values.all!(s => s == ModuleStatus.CompileError || s == ModuleStatus.WaitingForRun)
-            && moduleList.values.any!(mod => mod.hasError);
+        return status.values.all!(s => s.among(ModuleStatus.CompileError, ModuleStatus.RuntimeError, ModuleStatus.WaitingForRun))
+            && moduleList.values.any!(mod => mod.hasCompileError || mod.hasRuntimeError);
     }
 
     auto get(T)(string name) {
@@ -187,6 +201,8 @@ class Project {
     }
 
     string[] projectFiles() {
+        enforce(MetaInfo().projectDirectory.exists,
+                format!`"%s" does not exists.`(MetaInfo().projectDirectory));
         return MetaInfo().projectDirectory.dirEntries(SpanMode.breadth)
             .filter!(entry => entry.isFile)
             .filter!(entry => entry.baseName != "package.d")

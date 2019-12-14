@@ -37,9 +37,7 @@ static:
                 apiVersion : VK_API_VERSION_1_0
             },
             enabledLayerNames: [
-                "VK_LAYER_LUNARG_core_validation",
                 "VK_LAYER_LUNARG_standard_validation",
-                "VK_LAYER_LUNARG_parameter_validation",
                 "VK_LAYER_KHRONOS_validation",
             ],
             enabledExtensionNames: GLFW.getRequiredInstanceExtensions() ~ ["VK_EXT_debug_report"]

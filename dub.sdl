@@ -26,3 +26,61 @@ subPackage "./glfw"
 subPackage "./graphics"
 subPackage "./math"
 subPackage "./vulkan"
+
+configuration "unittest" {
+    postRunCommands "dub test :assimp"
+    postRunCommands "dub test :engine"
+    postRunCommands "dub test :event"
+    postRunCommands "dub test :fi"
+    postRunCommands "dub test :ft"
+    postRunCommands "dub test :glfw"
+    postRunCommands "dub test :graphics"
+    postRunCommands "dub test :math"
+    postRunCommands "dub test :vulkan"
+}
+
+configuration "vulkan-example-white-triangle" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./vulkan/example/source"
+    importPaths "./vulkan/example/source"
+    versions "WhiteTriangle"
+}
+
+configuration "vulkan-example-per-vertex-triangle" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./vulkan/example/source"
+    importPaths "./vulkan/example/source"
+    versions "PerVertexTriangle"
+}
+
+configuration "vulkan-example-uniform-triangle" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./vulkan/example/source"
+    importPaths "./vulkan/example/source"
+    versions "UniformTriangle"
+}
+
+configuration "vulkan-example-texture-rectangle" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./vulkan/example/source"
+    importPaths "./vulkan/example/source"
+    versions "TextureRectangle"
+}
+
+configuration "glfw-example" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./glfw/example/source"
+    importPaths "./glfw/example/source"
+}
+
+configuration "engine-example" {
+    targetType "executable"
+    targetPath "bin"
+    sourcePaths "./engine/example/source"
+    importPaths "./engine/example/source"
+}

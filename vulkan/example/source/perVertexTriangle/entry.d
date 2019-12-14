@@ -1,4 +1,7 @@
+module perVertexTriangle.entry;
+
 import std;
+import std.file : fremove = remove;
 import erupted;
 import erupted.vulkan_lib_loader;
 import sbylib.wrapper.vulkan;
@@ -61,9 +64,7 @@ void entryPoint() {
             apiVersion : VK_API_VERSION_1_0
         },
         enabledLayerNames: [
-            "VK_LAYER_LUNARG_core_validation",
             "VK_LAYER_LUNARG_standard_validation",
-            "VK_LAYER_LUNARG_parameter_validation",
             "VK_LAYER_KHRONOS_validation",
         ],
         enabledExtensionNames: GLFW.getRequiredInstanceExtensions()
@@ -344,108 +345,60 @@ void entryPoint() {
         VertexData([-0.5f, +0.5f], [0.0f, 0.0f, 1.0f]),
     ];
 
-    auto vData = createBuffer(gpu, device, vertices, BufferUsage.VertexBuffer);
-
-    auto vertexBuffer = vData.buffer;
-    scope (exit)
-        vertexBuffer.destroy();
-
-    auto vertexDeviceMemory = vData.deviceMemory;
-    scope (exit)
-        vertexDeviceMemory.destroy();
-
 
     /*
-       Uniformデータの作成
+       Bufferの作成
 
-       これも適当に。
+       今回の用途は当然Vertex Buffer。
      */
-    struct UniformData {
-        float time;
-    }
-
-    static UniformData[1] uniforms = [{
-        time: 0
-    }];
-
-    auto uData = createBuffer(gpu, device, uniforms, BufferUsage.UniformBuffer);
-
-    auto uniformBuffer = uData.buffer;
-    scope (exit)
-        uniformBuffer.destroy();
-
-    auto uniformDeviceMemory = uData.deviceMemory;
-    scope (exit)
-        uniformDeviceMemory.destroy();
-
-
-    /*
-       Descripter Set Layoutの作成
-
-       Descriptor Set LayoutはPipelineに対して色々な情報を教えるものらしい。
-       今回はUniformBufferの情報を教えてあげる。
-       descriptorCountはそのbinding値のオブジェクトを配列として見たときの要素数。
-     */
-    DescriptorSetLayout.CreateInfo descriptorSetLayoutInfo = {
-        bindings: [{
-            binding: 0,
-            descriptorType: DescriptorType.UniformBuffer,
-            descriptorCount: 1,
-            stageFlags: ShaderStage.Fragment
-        }]
+    Buffer.CreateInfo bufferInfo = {
+        usage: BufferUsage.VertexBuffer,
+        size: vertices.sizeof,
+        sharingMode: SharingMode.Exclusive,
     };
-    auto descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutInfo);
+    auto buffer = new Buffer(device, bufferInfo);
     scope (exit)
-        descriptorSetLayout.destroy();
+        buffer.destroy();
 
 
     /*
-       Descriptor Pool作成
-     */
-    DescriptorPool.CreateInfo descriptorPoolInfo = {
-        poolSizes: [{
-            type: DescriptorType.UniformBuffer,
-            descriptorCount: cast(uint)swapchainImages.length
-        }],
-        maxSets: cast(uint)swapchainImages.length
+       Device Memory確保
+
+       Vertex Buffer用のメモリ確保。
+     */ 
+    DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
+        allocationSize: device.getBufferMemoryRequirements(buffer).size,
+        memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes
+            .countUntil!(p => p.supports(MemoryProperties.MemoryType.Flags.HostVisible))
     };
-    auto descriptorPool = new DescriptorPool(device, descriptorPoolInfo);
+    enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
+    auto deviceMemory = new DeviceMemory(device, deviceMemoryAllocInfo);
     scope (exit)
-        descriptorPool.destroy();
+        deviceMemory.destroy();
 
 
     /*
-       Descriptor Setの確保
-
-       Descriptor Setは色々なデータ(Image, Buffer, BufferView)に対するBindの方法を指定する物体。
+       Device Memoryへのデータ転送
      */
-    DescriptorSet.AllocateInfo descriptorSetAllocInfo = {
-        descriptorPool: descriptorPool,
-        setLayouts: repeat(descriptorSetLayout).take(swapchainImages.length).array
-    };
-    auto descriptorSets = DescriptorSet.allocate(device, descriptorSetAllocInfo);
+    auto mappedMemory = deviceMemory.map(0, bufferInfo.size, 0);
+    mappedMemory[] = (cast(ubyte[])vertices)[];
+    deviceMemory.unmap();
 
-    foreach (descriptorSet; descriptorSets) {
-        DescriptorSet.Write[1] writes = [{
-            dstSet: descriptorSet,
-            dstBinding: 0,
-            dstArrayElement: 0,
-            descriptorType: DescriptorType.UniformBuffer,
-            bufferInfo: [{
-                buffer: uniformBuffer,
-                offset: 0,
-                range: UniformData.sizeof
-            }]
-        }];
-        DescriptorSet.Copy[0] copies;
-        descriptorSet.update(writes, copies);
-    }
+
+    /*
+       Device MemoryとBufferの紐づけ
+     */
+    deviceMemory.bindBuffer(buffer, 0);
+
 
     /*
        Shader Module作成
      */
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.vert"));
+    scope (exit) fremove("vert.spv");
+
     compileShader(__FILE_FULL_PATH__.dirName.buildPath("test.frag"));
+    scope (exit) fremove("frag.spv");
 
     ShaderModule.CreateInfo vsShaderCreateInfo = {
         code: cast(ubyte[])read("vert.spv")
@@ -466,11 +419,9 @@ void entryPoint() {
        PipelineLayout作成
 
        Pipelineが使う資源のレイアウトに関する情報らしい。
-       今回はUniform Bufferに関する情報を書く。
+       今回は虚無。
      */
-    PipelineLayout.CreateInfo pipelineLayoutCreateInfo = {
-        setLayouts: [descriptorSetLayout]
-    };
+    PipelineLayout.CreateInfo pipelineLayoutCreateInfo;
     auto pipelineLayout = new PipelineLayout(device, pipelineLayoutCreateInfo);
     scope (exit)
         pipelineLayout.destroy();
@@ -604,8 +555,7 @@ void entryPoint() {
            RenderPassの実行は
             1. PipelineのBind (OpenGLでいうusePipeline)
             2. Vertex BufferのBind (OpenGLでいうbindBuffer)
-            3. Uniform BufferのBind (OpenGLでいうglUniform)
-            4. Draw call (OpenGLでいうdrawArrays)
+            3. Draw call (OpenGLでいうdrawArrays)
            となっている。
          */
         CommandBuffer.BeginInfo beginInfo;
@@ -625,9 +575,7 @@ void entryPoint() {
         };
         commandBuffer.cmdBeginRenderPass(renderPassBeginInfo, SubpassContents.Inline);
         commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, pipeline);
-        commandBuffer.cmdBindVertexBuffers(0, [vertexBuffer], [0]);
-        commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout,
-                0, [descriptorSets[currentImageIndex]]);
+        commandBuffer.cmdBindVertexBuffers(0, [buffer], [0]);
         commandBuffer.cmdDraw(3, 1, 0, 0);
         commandBuffer.cmdEndRenderPass();
         commandBuffer.end();
@@ -663,64 +611,10 @@ void entryPoint() {
         Fence.wait([fence], true, ulong.max);
         Fence.reset([fence]);
 
-        /*
-           Uniformの更新
-         */
-        auto uniformData = cast(UniformData[])uniformDeviceMemory.map(0, uniforms.sizeof, 0);
-        uniformData[0].time += 0.05f;
-        uniformDeviceMemory.unmap();
-
 
         /*
            GLFWのEvent Polling
          */
         GLFW.pollEvents();
     }
-}
-
-auto createBuffer(Data)(PhysicalDevice gpu, Device device, ref Data data, BufferUsage usage) {
-    /*
-       Bufferの作成
-     */
-    Buffer.CreateInfo bufferInfo = {
-        usage: usage,
-        size: Data.sizeof,
-        sharingMode: SharingMode.Exclusive,
-    };
-    auto buffer = new Buffer(device, bufferInfo);
-
-
-    /*
-       Device Memory確保
-
-       Buffer用のメモリ確保。
-     */ 
-    DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
-        allocationSize: device.getBufferMemoryRequirements(buffer).size,
-        memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes
-            .countUntil!(p => p.supports(MemoryProperties.MemoryType.Flags.HostVisible))
-    };
-    enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
-    auto deviceMemory = new DeviceMemory(device, deviceMemoryAllocInfo);
-
-
-    /*
-       Device Memoryへのデータ転送
-     */
-    auto memory = deviceMemory.map(0, bufferInfo.size, 0);
-    memory[] = (cast(ubyte[])data)[];
-    deviceMemory.unmap();
-
-
-    /*
-       Device MemoryとBufferの紐づけ
-     */
-    deviceMemory.bindBuffer(buffer, 0);
-
-    struct Result {
-        Buffer buffer;
-        DeviceMemory deviceMemory;
-    }
-
-    return Result(buffer, deviceMemory);
 }
