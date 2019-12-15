@@ -8,7 +8,7 @@ import sbylib.wrapper.vulkan;
 mixin(Register!(entryPoint));
 
 @depends("root")
-void entryPoint(Project proj, ModuleContext context) {
+void entryPoint(ModuleContext context, string fontDir) {
     Window window;
     with (WindowBuilder()) {
         width = 400;
@@ -16,7 +16,6 @@ void entryPoint(Project proj, ModuleContext context) {
         window = buildWindow();
     }
 
-    auto fontDir = proj.get!string("fontDir");
     auto store = new GlyphStore(fontDir.buildPath("consola.ttf"), 256);
     context.pushResource(store);
 

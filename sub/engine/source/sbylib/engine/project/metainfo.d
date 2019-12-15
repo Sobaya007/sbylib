@@ -1,9 +1,7 @@
 module sbylib.engine.project.metainfo;
 
 import std;
-import dconfig;
 import sbylib.engine.util;
-import dconfig : config;
 
 class MetaInfo {
 

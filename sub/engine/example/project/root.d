@@ -10,8 +10,8 @@ import sbylib.graphics.util.testcompute;
 
 mixin(Register!(root));
 
-void root(Project proj, ModuleContext context) {
-    auto window = setupWindow(proj);
+void root(Project proj, ModuleContext context, Window window, string resourceDir) {
+    window = setupWindow(window);
     auto camera = setupCamera(proj);
 
     auto cameraControl = context.pushResource(new CameraControl(window, camera));
@@ -21,7 +21,7 @@ void root(Project proj, ModuleContext context) {
     context.pushReleaseCallback({ VulkanContext.deinitialize(); });
 
     setupFloor(context, window, camera);
-    setupBox(context, window, camera, proj);
+    setupBox(context, window, camera, resourceDir);
 
     with (TestCompute()) {
         context.pushReleaseCallback({ TestCompute.deinitialize(); });
@@ -59,8 +59,7 @@ void root(Project proj, ModuleContext context) {
     }
 }
 
-private Window setupWindow(Project proj) {
-    auto window = proj.get!Window("window");
+private Window setupWindow(Window window) {
     auto videoMode = Screen.getPrimaryScreen().currentVideoMode;
     window.pos = [0.pixel, 0.pixel];
     return window;
@@ -113,8 +112,7 @@ class Floor {
     mixin UseMaterial!(UnrealFloorMaterial);
 }
 
-private void setupBox(ModuleContext context, Window window, Camera camera, Project proj) {
-    auto resourceDir = proj.get!string("resourceDir");
+private void setupBox(ModuleContext context, Window window, Camera camera, string resourceDir) {
     void createFromGeometry(Geometry)(Geometry geom) {
         auto box = new Box(window, geom);
         context.pushResource(box);

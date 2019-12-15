@@ -10,4 +10,3 @@ targetPath "lib"
 libs "dl" "phobos2"
 
 dependency "sbylib:event" path="../event"
-dependency "dconfig" version="~master"
