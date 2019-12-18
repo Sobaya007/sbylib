@@ -3,6 +3,7 @@ module sbylib.wrapper.glfw.window;
 import derelict.glfw3.glfw3;
 import sbylib.wrapper.glfw.constants;
 import erupted;
+import sbylib.wrapper.glfw.glfw : glfwCreateWindowSurface;
 
 private Window[GLFWwindow*] windowMap;
 
@@ -10,8 +11,6 @@ public import sbylib.wrapper.glfw.cursor : Cursor;
 public import sbylib.wrapper.glfw.screen : Screen;
 public import sbylib.wrapper.glfw.image : Image;
 public import std.typecons : BitFlags;
-
-private extern(C) VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow *window, const VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
 
 /**
 GLFW based window class

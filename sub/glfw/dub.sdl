@@ -7,9 +7,5 @@ license "proprietary"
 targetType "library"
 targetPath "lib"
 
-libs "glfw3"
-
 dependency "derelict-glfw3" version="~>4.0.0-alpha.6"
-subConfiguration "derelict-glfw3" "derelict-glfw3-static"
-
 dependency "erupted" version="*"

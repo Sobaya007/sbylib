@@ -1,10 +1,10 @@
 module sbylib.wrapper.glfw.glfw;
 
 import derelict.glfw3.glfw3;
+import erupted;
+mixin DerelictGLFW3_VulkanBind;
 
 public import sbylib.wrapper.glfw.constants : ErrorCode, KeyButton;
-
-private extern(C) const(char**) glfwGetRequiredInstanceExtensions(uint*);
 
 class GLFW {
 
@@ -15,6 +15,8 @@ static:
         if (initialized) return;
         initialized = true;
 
+        DerelictGLFW3.load();
+        DerelictGLFW3_loadVulkan();
         const initResult = glfwInit();
         assert(initResult,"Failed to initialize GLFW");
     }
