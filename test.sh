@@ -1,0 +1,11 @@
+dub test --compiler=$DC
+dub test :assimp --compiler=$DC
+dub test :collision --compiler=$DC
+dub test :engine --compiler=$DC
+dub test :event --compiler=$DC
+dub test :fi --compiler=$DC
+dub test :ft --compiler=$DC
+dub test :glfw --compiler=$DC
+dub test :graphics --compiler=$DC
+dub test :math --compiler=$DC
+dub test :vulkan --compiler=$DC

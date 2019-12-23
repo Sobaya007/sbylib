@@ -31,16 +31,6 @@ subPackage "./sub/vulkan"
 
 configuration "unittest" {
     excludedSourceFiles "source/app.d"
-    postRunCommands "dub test :assimp"
-    postRunCommands "dub test :collision"
-    postRunCommands "dub test :engine"
-    postRunCommands "dub test :event"
-    postRunCommands "dub test :fi"
-    postRunCommands "dub test :ft"
-    postRunCommands "dub test :glfw"
-    postRunCommands "dub test :graphics"
-    postRunCommands "dub test :math"
-    postRunCommands "dub test :vulkan"
 }
 
 configuration "vulkan-example-white-triangle" {

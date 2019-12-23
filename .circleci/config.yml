@@ -4,12 +4,13 @@ jobs:
     docker:
       - image: dlang2/dmd-circleci:2.089.0-beta.1
 
+    environment:
+      DC: dmd
     steps:
       - checkout
-
       - run:
           name: Test
-          command: dub test
+          command: bash ./test.sh
 workflows:
   version: 2
   test:
