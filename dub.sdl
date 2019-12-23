@@ -8,6 +8,7 @@ targetType "library"
 targetPath "lib"
 
 dependency "sbylib:assimp" version="*"
+dependency "sbylib:collision" version="*"
 dependency "sbylib:engine" version="*"
 dependency "sbylib:event" version="*"
 dependency "sbylib:fi" version="*"
@@ -18,6 +19,7 @@ dependency "sbylib:math" version="*"
 dependency "sbylib:vulkan" version="*"
 
 subPackage "./sub/assimp"
+subPackage "./sub/collision"
 subPackage "./sub/engine"
 subPackage "./sub/event"
 subPackage "./sub/fi"
@@ -30,6 +32,7 @@ subPackage "./sub/vulkan"
 configuration "unittest" {
     excludedSourceFiles "source/app.d"
     postRunCommands "dub test :assimp"
+    postRunCommands "dub test :collision"
     postRunCommands "dub test :engine"
     postRunCommands "dub test :event"
     postRunCommands "dub test :fi"
@@ -79,9 +82,9 @@ configuration "glfw-example" {
     importPaths "./sub/glfw/example/source"
 }
 
-configuration "engine-example" {
+configuration "collision-example" {
     targetType "executable"
     targetPath "bin"
-    sourcePaths "./sub/engine/example/source"
-    importPaths "./sub/engine/example/source"
+    sourcePaths "./sub/collision/example/source"
+    importPaths "./sub/collision/example/source"
 }
