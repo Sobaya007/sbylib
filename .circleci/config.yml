@@ -1,8 +1,8 @@
 version: 2
 jobs:
-  build:
+  test:
     docker:
-      - image: dlang2/dmd-circleci:2.087.1 
+      - image: dlang2/dmd-circleci:2.089.0-beta.1
 
     steps:
       - checkout
