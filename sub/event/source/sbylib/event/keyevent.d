@@ -69,7 +69,7 @@ private struct KeyNotification {
     Window window;
 
     bool judge(KeyButton button, ButtonState state, BitFlags!ModKeyButton mods) {
-        if (button != this.button.button) return false;
+        if (button != this.button.button.get()) return false;
         if (state != this.state) return false;
         foreach (key, value; this.button.mod) {
             if (value && !(mods & key)) return false;

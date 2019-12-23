@@ -49,7 +49,7 @@ struct Node {
         strs ~= children.map!(c => c.toString(scene)).array;
         strs ~= meshes.map!(i => scene.meshes[i].toString(scene)).array;
         strs ~= "matrix: " ~ this.transformation.toString();
-        if (metaData.isNull is false) strs ~= metaData.toString();
+        if (metaData.isNull is false) strs ~= metaData.get().toString();
 
         return tree(format!"Node[%s]"(name), strs);
     }

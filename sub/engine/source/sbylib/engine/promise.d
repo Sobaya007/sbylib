@@ -59,7 +59,7 @@ class Promise(T) {
             static if (is(P.Ret == void)) {
                 this.exec(f);
             } else {
-                this.exec(f, parent.result);
+                this.exec(f, parent.result.get());
             }
         });
     }
