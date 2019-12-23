@@ -1,5 +1,5 @@
 name "ft"
-description "A minimal D application."
+description "FreeType binding part"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

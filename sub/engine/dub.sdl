@@ -1,5 +1,5 @@
 name "engine"
-description "A minimal D application."
+description "Engine part"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

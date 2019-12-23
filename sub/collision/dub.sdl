@@ -1,5 +1,5 @@
 name "collision"
-description "A minimal D application."
+description "Collision detection utility"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

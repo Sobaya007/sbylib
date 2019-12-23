@@ -1,5 +1,5 @@
 name "math"
-description "A minimal D application."
+description "Mathematical utility"
 authors "sobaya"
 copyright "Copyright © 2018, sobaya"
 license "proprietary"

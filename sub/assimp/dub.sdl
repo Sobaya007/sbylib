@@ -1,5 +1,5 @@
 name "assimp"
-description "A minimal D application."
+description "Assimp binding part"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

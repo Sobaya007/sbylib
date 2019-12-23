@@ -1,5 +1,5 @@
 name "fi"
-description "A minimal D application."
+description "FreeImage binding part"
 authors "sobaya"
 copyright "Copyright © 2018, sobaya"
 license "proprietary"

@@ -1,5 +1,5 @@
 name "sbylib"
-description "A minimal D application."
+description "A library of sobaya, by sobaya, for sobaya"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

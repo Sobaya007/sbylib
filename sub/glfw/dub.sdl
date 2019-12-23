@@ -1,5 +1,5 @@
 name "glfw"
-description "A minimal D application."
+description "GLFW binding part"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

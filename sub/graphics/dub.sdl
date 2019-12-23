@@ -1,5 +1,5 @@
 name "graphics"
-description "A minimal D application."
+description "Graphics utility part integrating other packages"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"

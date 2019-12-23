@@ -1,5 +1,5 @@
 name "vulkan"
-description "A minimal D application."
+description "Vulkan binding part"
 authors "sobaya"
 copyright "Copyright © 2019, sobaya"
 license "proprietary"
