@@ -53,7 +53,7 @@ class CameraControl {
 
             when(mouse.moved.on(window)).then({
                 if (window.cursorMode == CursorMode.Normal) return;
-                auto dif = -(window.mousePos - basePoint) * 0.003;
+                auto dif = -(vec2(window.mousePos) - basePoint) * 0.003;
                 auto angle = dif.length.rad;
                 auto axis = safeNormalize(arrivalRot.toMatrix3 * vec3(dif.y, dif.x, 0));
                 arrivalRot = quat.axisAngle(axis, angle) * arrivalRot;
