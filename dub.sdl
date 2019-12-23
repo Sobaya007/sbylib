@@ -81,10 +81,3 @@ configuration "glfw-example" {
     sourcePaths "./sub/glfw/example/source"
     importPaths "./sub/glfw/example/source"
 }
-
-configuration "collision-example" {
-    targetType "executable"
-    targetPath "bin"
-    sourcePaths "./sub/collision/example/source"
-    importPaths "./sub/collision/example/source"
-}

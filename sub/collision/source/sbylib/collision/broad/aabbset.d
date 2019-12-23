@@ -94,7 +94,7 @@ class AABBSet {
         AABB getAABB() { 
             if(aabb.isNull)
                 aabb = AABB.unite(visitAABB(children[0]), visitAABB(children[1])); 
-            return aabb;
+            return aabb.get();
         }
         
         void detect(MyType : CollisionShape, YourType : CollisionShape)
