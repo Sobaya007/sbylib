@@ -84,5 +84,13 @@ class Queue {
         enforceVK(vkQueuePresentKHR(queue, &info));
     }
 
+    // utilities, not just a wrapper
+    void submit(CommandBuffer commandBuffer) {
+        SubmitInfo submitInfo = {
+            commandBuffers: [commandBuffer]
+        };
+        submit([submitInfo], null);
+    }
+
     mixin VkTo!(VkQueue);
 }

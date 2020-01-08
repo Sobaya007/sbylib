@@ -342,4 +342,12 @@ TIFF compression flags)
             case ImageType.Complex: return 128;
         }
     }
+
+    bool flipVertical() {
+        return FreeImage_FlipVertical(bitmap) > 0;
+    }
+
+    bool flipHorizontal() {
+        return FreeImage_FlipHorizontal(bitmap) > 0;
+    }
 }

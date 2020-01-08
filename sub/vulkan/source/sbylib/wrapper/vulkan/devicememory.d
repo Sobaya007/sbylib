@@ -34,6 +34,13 @@ class DeviceMemory {
         vkFreeMemory(device.device, deviceMemory, null);
     }
 
+    ubyte* mapWhole(VkDeviceSize offset, VkMemoryMapFlags flags) {
+        ubyte* pData;
+        enforceVK(vkMapMemory(device.device, deviceMemory, offset, VK_WHOLE_SIZE, flags,
+                cast(void**)(&pData)));
+        return pData;
+    }
+
     ubyte[] map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags) {
         ubyte* pData;
         enforceVK(vkMapMemory(device.device, deviceMemory, offset, size, flags,

@@ -21,12 +21,19 @@ static:
 
     mixin ImplResourceStack;
 
-    void initialize(string appName, uint appVersion, Window window,
-            VkPhysicalDeviceFeatures feature = VkPhysicalDeviceFeatures.init) {
+    mixin Sealable!(VkPhysicalDeviceFeatures, "feature");
+    mixin Sealable!(string[], "layerNames");
+
+    void initialize(string appName, uint appVersion, Window window) {
         import erupted.vulkan_lib_loader : loadGlobalLevelFunctions;
 
         const globalFunctionLoaded = loadGlobalLevelFunctions();
         assert(globalFunctionLoaded);
+
+        layerNames ~= [
+            "VK_LAYER_LUNARG_standard_validation",
+            "VK_LAYER_KHRONOS_validation",
+        ];
 
         Instance.CreateInfo instanceCreateInfo = {
             applicationInfo: {
@@ -36,10 +43,7 @@ static:
                 engineVersion: VK_MAKE_VERSION(1,0,0),
                 apiVersion : VK_API_VERSION_1_0
             },
-            enabledLayerNames: [
-                "VK_LAYER_LUNARG_standard_validation",
-                "VK_LAYER_KHRONOS_validation",
-            ],
+            enabledLayerNames: layerNames,
             enabledExtensionNames: GLFW.getRequiredInstanceExtensions() ~ ["VK_EXT_debug_report"]
         };
 
@@ -67,6 +71,9 @@ static:
 
         ComputeContext.initialize();
         pushReleaseCallback({ ComputeContext.deinitialize(); });
+
+        seal!(feature);
+        seal!(layerNames);
     }
 
     void deinitialize() {
@@ -108,5 +115,4 @@ static:
         };
         return new CommandPool(VulkanContext.device, commandPoolCreateInfo);
     }
-
 }

@@ -59,4 +59,10 @@ class Image {
     }
 
     mixin VkTo!(VkImage);
+
+    VkSubresourceLayout getSubresourceLayout(VkImageSubresource subResource) {
+        VkSubresourceLayout subResourceLayout;
+        vkGetImageSubresourceLayout(device.device, image, &subResource, &subResourceLayout);
+        return subResourceLayout;
+    }
 }

@@ -3,6 +3,7 @@ module sbylib.wrapper.vulkan.physicaldevice;
 import std;
 import erupted;
 import sbylib.wrapper.vulkan.enums;
+import sbylib.wrapper.vulkan.formatproperties;
 import sbylib.wrapper.vulkan.memoryproperties;
 import sbylib.wrapper.vulkan.queuefamilyproperties;
 import sbylib.wrapper.vulkan.surface;
@@ -85,6 +86,12 @@ class PhysicalDevice {
         result.pNext = &t;
         vkGetPhysicalDeviceFeatures2KHR(physDevice, &result);
         return t;
+    }
+
+    FormatProperties getFormatProperties(VkFormat format) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physDevice, format, &props);
+        return FormatProperties(props);
     }
 }
 

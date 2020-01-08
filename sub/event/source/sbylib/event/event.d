@@ -47,7 +47,7 @@ class Event(Args...) : IEvent {
                 context.each!(c => c.destroy());
             }
             assert(this.killCondition !is null && this.killCondition()); // to ensure this event is already dead.
-            throw new EventException(e.msg);
+            throw e;
         }
     }
 

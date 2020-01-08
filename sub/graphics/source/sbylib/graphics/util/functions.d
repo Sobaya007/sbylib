@@ -276,3 +276,38 @@ mixin template ImplResourceStack() {
         deconstructionStack ~= cb;
     }
 }
+
+mixin template Sealable(Type, string name) {
+    import std : replace;
+
+    mixin(q{
+        private ${type} _${name};
+        private bool _${name}SealFlag;
+
+        ref ${type} ${name}() {
+            import std : enforce;
+            enforce(_${name}SealFlag is false, "${name} is already sealed.");
+            return _${name};
+        }
+
+        void seal(alias target : ${name})() {
+            _${name}SealFlag = true;
+        }
+    }
+    .replace("${type}", Type.stringof)
+    .replace("${name}", name));
+}
+
+unittest {
+    import std : assertThrown;
+
+    class A {
+        mixin Sealable!(int, "x");
+    }
+
+    auto a = new A;
+    a.x = 3;
+    assert(a.x == 3);
+    a.seal!(a.x);
+    assertThrown(a.x = 4);
+}

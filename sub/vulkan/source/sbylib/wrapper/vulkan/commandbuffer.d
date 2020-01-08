@@ -187,6 +187,10 @@ class CommandBuffer {
         vkCmdCopyBuffer(commandBuffer, src.buffer, dst.buffer, cast(uint)regions.length, regions.ptr);
     }
 
+    void cmdCopyImage(Image src, ImageLayout srcImageLayout, Image dst, ImageLayout dstImageLayout, const VkImageCopy[] regions) {
+        vkCmdCopyImage(commandBuffer, src.image, srcImageLayout, dst.image, dstImageLayout, cast(uint)regions.length, regions.ptr);
+    }
+
     void cmdCopyBufferToImage(uint N)(Buffer src, Image dst, ImageLayout layout, const VkBufferImageCopy[N] regions) {
         vkCmdCopyBufferToImage(commandBuffer, src.buffer, dst.image, layout, N, regions.ptr);
     }
@@ -205,5 +209,13 @@ class CommandBuffer {
             commandBuffers[i] = _commandBuffers[i].vkTo();
         }
         vkCmdExecuteCommands(commandBuffer, N, commandBuffers.ptr);
+    }
+
+    // utilities, not just a wrapper
+
+    void begin(BeginInfo.Flags[] flags...) {
+        BitFlags!(BeginInfo.Flags) infoFlags;
+        foreach (flag; flags) infoFlags |= flag;
+        begin(BeginInfo(infoFlags));
     }
 }
