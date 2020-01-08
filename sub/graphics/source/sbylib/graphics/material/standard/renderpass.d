@@ -28,6 +28,7 @@ class StandardRenderPass : RenderPass {
     }
 
     private void delegate(CommandBuffer)[] renderList;
+    private bool submitted;
 
     mixin ImplReleaseOwn;
 
@@ -203,6 +204,12 @@ class StandardRenderPass : RenderPass {
     }
 
     private void updateCommandBuffers() {
+        if (submitted && submitFence.signaled is false) {
+            Fence.wait([submitFence], true, ulong.max);
+            submitted = false;
+        }
+        enforce(!submitted || submitFence.signaled);
+
         foreach (commandBuffer, framebuffer; zip(commandBuffers, framebuffers)) {
             CommandBuffer.BeginInfo beginInfo;
             commandBuffer.begin(beginInfo);
@@ -234,6 +241,7 @@ class StandardRenderPass : RenderPass {
     }
 
     void submitRender() {
+        Fence.reset([submitFence]);
         with (RenderContext(window)) {
             auto currentImageIndex = getImageIndex();
 
@@ -241,6 +249,7 @@ class StandardRenderPass : RenderPass {
                 commandBuffers: [commandBuffers[currentImageIndex]]
             };
             queue.submit([submitInfo], submitFence);
+            submitted = true;
         }
     }
 

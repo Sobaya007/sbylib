@@ -79,6 +79,13 @@ class PhysicalDevice {
         return MemoryProperties(memProps);
     }
 
+    FeatureType getFeature2(FeatureType)() {
+        FeatureType t;
+        VkPhysicalDeviceFeatures2 result;
+        result.pNext = &t;
+        vkGetPhysicalDeviceFeatures2KHR(physDevice, &result);
+        return t;
+    }
 }
 
 uint findQueueFamilyIndex(alias pred)(PhysicalDevice dev) {

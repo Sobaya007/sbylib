@@ -34,6 +34,15 @@ class Fence {
         vkDestroyFence(device.device, fence, null);
     }
 
+    auto signaled() {
+        auto result = vkGetFenceStatus(device.device, fence);
+        switch (result) {
+            case VK_SUCCESS: return true;
+            case VK_NOT_READY: return false;
+            default: assert(false);
+        }
+    }
+
     static void wait(uint N)(Fence[N] _fences, bool waitAll, ulong timeout) {
         VkFence[N] fences;
         static foreach (i; 0 .. N)

@@ -11,13 +11,28 @@ mixin template UseMaterial(MaterialType) {
     alias DataType = MaterialType.DataSet;
     DataType _data;
     alias _data this;
+    private void delegate() delegate() _reregister;
+    private void delegate() _unregister;
 
     this(Geometry, Args...)(Window window, Geometry geom, Args args) {
-        this._data = MaterialType(window).build(geom, args);
+        auto tmp = MaterialType(window).build(geom, args);
+        _data = tmp[0];
+        auto register = tmp[1];
+        this._reregister = () => StandardRenderPass(window).register(register);
+        this._unregister = _reregister();
+        _data.pushReleaseCallback(_unregister);
     }
 
     ~this() {
         this._data.destroy();
+    }
+
+    void unregister() {
+        _unregister();
+    }
+
+    void reregister() {
+        _unregister = _reregister();
     }
 }
 
@@ -110,11 +125,10 @@ mixin template Material(DataSet) {
     struct Builder {
         Window window;
 
-        public DataSet build(Geometry, Args...)(Geometry geom, Args args) {
+        public auto build(Geometry, Args...)(Geometry geom, Args args) {
             with (getInstance(window, geom.primitive)) {
                 auto result = new DataSet(geom, descriptorPool, descriptorSetLayout, args);
-
-                result.pushReleaseCallback(StandardRenderPass(window).register((CommandBuffer commandBuffer) {
+                auto register = (CommandBuffer commandBuffer) {
                     with (result) {
                         commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, pipeline);
                         commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, [descriptorSet]);
@@ -122,8 +136,8 @@ mixin template Material(DataSet) {
 
                         record(geom, commandBuffer);
                     }
-                }));
-                return result;
+                };
+                return tuple(result, register);
             }
         }
     }

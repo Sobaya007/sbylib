@@ -29,7 +29,7 @@ class Module(RetType) {
 
     private alias FuncType = RetType function(Project, ModuleContext);
 
-    private ModuleContext context;
+    private ModuleContext _context;
     private FuncType func;
     private DLL dll;
     private Project proj;
@@ -44,7 +44,7 @@ class Module(RetType) {
     this(Project proj, string path) {
         this.path = path;
         this.proj = proj;
-        this.context = new ModuleContext;
+        this._context = new ModuleContext;
         this.hash = md5Of(readText(path));
         Compiler.compile(path)
         .error((Exception e) {
@@ -103,6 +103,10 @@ class Module(RetType) {
 
     package bool hasModified() {
         return md5Of(readText(path)) != this.hash;
+    }
+
+    ModuleContext context() {
+        return _context;
     }
 }
 

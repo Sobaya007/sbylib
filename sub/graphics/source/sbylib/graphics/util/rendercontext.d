@@ -127,12 +127,12 @@ private:
         in (currentImageIndex != -1)
     {
         Fence.wait(presentFences, true, ulong.max);
-        Fence.reset(presentFences);
         Queue.PresentInfo presentInfo = {
             swapchains: [swapchain],
             imageIndices: [currentImageIndex]
         };
         queue.present(presentInfo);
+        Fence.reset([imageIndexAcquireFence]);
         currentImageIndex = acquireNextImageIndex(imageIndexAcquireFence);
     }
 
@@ -142,6 +142,7 @@ private:
 
     public int getImageIndex() {
         if (currentImageIndex == -1) {
+            Fence.reset([imageIndexAcquireFence]);
             return currentImageIndex = acquireNextImageIndex(imageIndexAcquireFence);
         }
         return currentImageIndex;

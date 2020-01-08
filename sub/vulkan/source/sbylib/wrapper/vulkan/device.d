@@ -24,6 +24,7 @@ class Device {
         @vkProp() {
             immutable VkDeviceCreateFlags flags;
             const(VkPhysicalDeviceFeatures)* pEnabledFeatures;
+            void* pNext;
         }
         @vkProp("pQueueCreateInfos", "queueCreateInfoCount") {
             QueueCreateInfo[] queueCreateInfos;
