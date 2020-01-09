@@ -88,12 +88,12 @@ string cacheDir() {
     return dir;
 }
 
-private string findPhobosPath() {
+private string[] findPhobosPath() {
     import std.file : write;
 
     const cacheFile = cacheDir.buildPath("phobospath");
     if (cacheFile.exists)
-        return readText(cacheFile).chomp;
+        return readText(cacheFile).chomp.split("\n");
 
     auto file = cacheDir.buildPath("tmp.d");
     file.write(q{
@@ -110,11 +110,12 @@ void main()
     
     auto result = execute(["dub", file]).output
     .split("\n")
-    .map!(line => line.to!(string[]).ifThrown([""])[0])
-    .filter!(line => line.length > 0)
-    .front;
-    assert(result.exists, format!"'%s' does not exist."(result));
-    cacheFile.write(result);
+    .filter!(line => line.startsWith("["))
+    .map!(line => line.to!(string[]))
+    .join;
+
+    foreach (r; result) enforce(r.exists, format!"'%s' does not exist."(r));
+    cacheFile.write(result.join("\n"));
 
     return result;
 }

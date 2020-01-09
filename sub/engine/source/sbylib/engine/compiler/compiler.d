@@ -159,9 +159,10 @@ private struct CompileConfig {
     }
 
     private auto search(string p) const {
-        return librarySearchPath
+        auto tmp = librarySearchPath
             .map!(d => d.buildPath(p))
-            .filter!(p => p.exists)
-            .front;
+            .filter!(p => p.exists);
+        enforce(tmp.empty is false, "Library not found: " ~ p);
+        return tmp.front;
     }
 }

@@ -183,7 +183,9 @@ class Project {
 	}
 
     private bool shouldReload(VModule mod) {
-        return mod.hasModified || mod.dependencies.any!(d => shouldReload(findModule(d).front));
+        auto deps = mod.dependencies.map!(d => findModule(d));
+        foreach (d; deps) enforce(d.empty is false, format!"Dependency %s is not found."(d));
+        return mod.hasModified || deps.any!(d => shouldReload(d.front));
     }
 
     private VModule load(string file) {

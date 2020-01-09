@@ -36,8 +36,9 @@ static:
         enum Head = "Could not resolve location of";
         auto errors = result.filter!(r => r.startsWith(Head));
         if (!errors.empty) {
-            throw new ResolveLocationException(
-                Head ~ ":\n" ~ errors.map!(e => e.split(Head).back).join("\n"));
+            throw new ResolveLocationException(format!"%s:\n%s\nimportPath=%s"
+                    (Head, errors.map!(e => e.split(Head).back).join("\n"), 
+                     importPath.join("\n")));
         }
 
         return result;

@@ -98,7 +98,9 @@ private:
             const surfaceCapabilities = gpu.getSurfaceCapabilities(surface);
 
             const surfaceFormats = gpu.getSurfaceFormats(surface);
-            const surfaceFormat = surfaceFormats.find!(f => f.format == VK_FORMAT_B8G8R8A8_UNORM).front;
+            const surfaceFormatCandidates = surfaceFormats.find!(f => f.format == VK_FORMAT_B8G8R8A8_UNORM);
+            enforce(surfaceFormatCandidates.empty is false, "Proper surface formats are not found.");
+            const surfaceFormat = surfaceFormatCandidates.front;
             this.swapchainFormat = surfaceFormat.format;
 
             Swapchain.CreateInfo swapchainCreateInfo = {
