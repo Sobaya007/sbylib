@@ -1,8 +1,6 @@
 import std;
-import sbylib.engine;
-import sbylib.event;
-import sbylib.graphics;
-import sbylib.wrapper.glfw;
+import sbylib;
+import erupted;
 
 void entryPoint() {
     Window window;
@@ -17,14 +15,22 @@ void entryPoint() {
     scope (exit)
         window.destroy();
     
-    assert(GLFW.hasVulkanSupport());
+    enforce(GLFW.hasVulkanSupport());
 
+    VulkanContext.initialize("example app", VK_MAKE_VERSION(0,0,1), window);
+    scope (exit) VulkanContext.deinitialize();
+
+    when(KeyButton.Escape.pressed.on(window)).then({
+        window.shouldClose = true;
+    });
+    when(window.shouldClose).then({
+        stopEngine();
+    });
     when(Frame(90)).then({
         GLFW.pollEvents();
     });
-
-    when(window.shouldClose).then({
-        stopEngine();
+    when(Frame(88)).then({
+        StandardRenderPass(window).submitRender();
     });
 
     EngineSetting setting = {

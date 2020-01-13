@@ -909,10 +909,11 @@ auto createBuffer(Data)(PhysicalDevice gpu, Device device, Data[] data, BufferUs
 
        Buffer用のメモリ確保。
      */ 
+    const requirements = device.getBufferMemoryRequirements(buffer);
     DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
-        allocationSize: device.getBufferMemoryRequirements(buffer).size,
-        memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes
-            .countUntil!(p => p.supports(MemoryProperties.MemoryType.Flags.HostVisible))
+        allocationSize: requirements.size,
+        memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes.enumerate
+            .countUntil!(p => requirements.acceptable(p.index))
     };
     enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
     auto deviceMemory = new DeviceMemory(device, deviceMemoryAllocInfo);

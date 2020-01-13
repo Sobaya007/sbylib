@@ -123,13 +123,7 @@ class StandardRenderPass : RenderPass {
 
     private DeviceMemory createMemory(Image image, ImageLayout layout, ImageAspect aspect) {
         with (VulkanContext) {
-            DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
-                allocationSize: device.getImageMemoryRequirements(image).size,
-                memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes
-                    .countUntil!(p => p.supports(MemoryProperties.MemoryType.Flags.DeviceLocal))
-            };
-            enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
-            auto result = new DeviceMemory(device, deviceMemoryAllocInfo);
+            auto result = image.allocateMemory(gpu, MemoryProperties.MemoryType.Flags.DeviceLocal);
             result.bindImage(image, 0);
             transitionImage(depthImage, ImageLayout.Undefined, layout, aspect);
             return result;

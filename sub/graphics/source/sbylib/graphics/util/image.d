@@ -17,15 +17,7 @@ class VImage {
 
     this(Image _image, MemoryProperties.MemoryType.Flags flag) {
         this._image = _image;
-
-        DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
-            allocationSize: VulkanContext.device.getImageMemoryRequirements(_image).size,
-            memoryTypeIndex: cast(uint)VulkanContext.gpu.getMemoryProperties().memoryTypes
-                .countUntil!(p => p.supports(flag))
-        };
-        enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
-        this._memory = new DeviceMemory(VulkanContext.device, deviceMemoryAllocInfo);
-    
+        this._memory = _image.allocateMemory(VulkanContext.gpu, flag);
     
         _memory.bindImage(_image, 0);
     }

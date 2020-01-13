@@ -39,6 +39,20 @@ class Device {
         const mixin VkTo!(VkDeviceCreateInfo);
     }
 
+    static struct MemoryRequirements {
+        @vkProp() {
+            VkDeviceSize    size;
+            VkDeviceSize    alignment;
+            uint32_t        memoryTypeBits;
+        }
+
+        mixin VkFrom!(VkMemoryRequirements);
+
+        bool acceptable(size_t memoryTypeIndex) const {
+            return (memoryTypeBits & (1 << memoryTypeIndex)) > 0;
+        }
+    }
+
     package VkDevice device;
     private PhysicalDevice gpu;
 
@@ -67,15 +81,15 @@ class Device {
         return new Queue(this, queue);
     }
 
-    VkMemoryRequirements getBufferMemoryRequirements(Buffer buffer) {
+    MemoryRequirements getBufferMemoryRequirements(Buffer buffer) {
         VkMemoryRequirements memreq;
         vkGetBufferMemoryRequirements(device, buffer.buffer, &memreq);
-        return memreq;
+        return MemoryRequirements(memreq);
     }
 
-    VkMemoryRequirements getImageMemoryRequirements(Image image) {
+    MemoryRequirements getImageMemoryRequirements(Image image) {
         VkMemoryRequirements memreq;
         vkGetImageMemoryRequirements(device, image.image, &memreq);
-        return memreq;
+        return MemoryRequirements(memreq);
     }
 }

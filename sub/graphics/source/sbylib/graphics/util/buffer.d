@@ -32,16 +32,7 @@ class VBuffer(T) {
                 sharingMode: SharingMode.Exclusive,
             };
             this._buffer = new Buffer(device, bufferInfo);
-    
-    
-            DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
-                allocationSize: device.getBufferMemoryRequirements(_buffer).size,
-                memoryTypeIndex: cast(uint)VulkanContext.gpu.getMemoryProperties().memoryTypes
-                    .countUntil!(p => p.supports(flag))
-            };
-            enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
-            this._memory = new DeviceMemory(device, deviceMemoryAllocInfo);
-    
+            this._memory = _buffer.allocateMemory(VulkanContext.gpu, flag);
     
             _memory.bindBuffer(_buffer, 0);
         }

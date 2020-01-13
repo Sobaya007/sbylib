@@ -3,7 +3,10 @@ module sbylib.wrapper.vulkan.image;
 import std;
 import erupted;
 import sbylib.wrapper.vulkan.device;
+import sbylib.wrapper.vulkan.devicememory;
 import sbylib.wrapper.vulkan.enums;
+import sbylib.wrapper.vulkan.physicaldevice;
+import sbylib.wrapper.vulkan.memoryproperties;
 import sbylib.wrapper.vulkan.util;
 
 class Image {
@@ -64,5 +67,16 @@ class Image {
         VkSubresourceLayout subResourceLayout;
         vkGetImageSubresourceLayout(device.device, image, &subResource, &subResourceLayout);
         return subResourceLayout;
+    }
+
+    DeviceMemory allocateMemory(PhysicalDevice gpu, MemoryProperties.MemoryType.Flags memoryTypeFlag) {
+        const requirements = device.getImageMemoryRequirements(this);
+        DeviceMemory.AllocateInfo deviceMemoryAllocInfo = {
+            allocationSize: requirements.size,
+            memoryTypeIndex: cast(uint)gpu.getMemoryProperties().memoryTypes.enumerate
+                .countUntil!(p => requirements.acceptable(p.index) && p.value.supports(memoryTypeFlag))
+        };
+        enforce(deviceMemoryAllocInfo.memoryTypeIndex != -1);
+        return new DeviceMemory(device, deviceMemoryAllocInfo);
     }
 }

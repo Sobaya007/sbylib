@@ -17,9 +17,6 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
     auto cameraControl = context.pushResource(new CameraControl(window, camera));
     cameraControl.bind();
 
-    VulkanContext.initialize("example app", VK_MAKE_VERSION(0,0,1), window);
-    context.pushReleaseCallback({ VulkanContext.deinitialize(); });
-
     setupFloor(context, window, camera);
     setupBox(context, window, camera, resourceDir);
 
@@ -46,13 +43,6 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
     }
 
     with (context()) {
-        when(Frame(88)).then({
-            StandardRenderPass(window).submitRender();
-            GBufferRenderPass(window).submitRender();
-        });
-        when(KeyButton.Escape.pressed.on(window)).then({
-            window.shouldClose = true;
-        });
         when((Ctrl + KeyButton.KeyR).pressed.on(window)).then({
             proj.reloadAll();
         });
@@ -146,5 +136,5 @@ class Box {
     mixin ImplRot;
     mixin ImplScale;
     mixin ImplWorldMatrix;
-    mixin UseMaterial!(GBufferNormalMaterial);
+    mixin UseMaterial!(NormalMaterial);
 }
