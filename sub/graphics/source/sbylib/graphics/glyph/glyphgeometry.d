@@ -15,7 +15,7 @@ struct GlyphGeometry {
     Geometry!(Vertex, uint) geom;
     alias geom this;
 
-    void add(Glyph g, vec2 pos, vec2 size) {
+    void add(const Glyph g, vec2 pos, vec2 size) {
         const indexOffset = cast(int)this.vertexList.length;
 
         alias lvec2 = Vector!(long,2);

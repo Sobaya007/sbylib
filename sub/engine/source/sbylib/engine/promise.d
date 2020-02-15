@@ -114,7 +114,7 @@ class Promise(T) {
     }
 
     auto error(Ex)(void delegate(Ex) f) {
-        when(this.e !is null).then({
+        when(this.e !is null).once({
             f(cast(Ex)this.e);
         });
         return this;

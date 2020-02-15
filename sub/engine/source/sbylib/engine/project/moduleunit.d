@@ -1,7 +1,6 @@
 module sbylib.engine.project.moduleunit;
 
 import std;
-import std.digest.md : md5Of;
 import sbylib.event;
 import sbylib.engine.compiler.compiler;
 import sbylib.engine.compiler.dll;
@@ -9,54 +8,53 @@ import sbylib.engine.compiler.exception;
 import sbylib.engine.project.project;
 import sbylib.engine.project.metainfo;
 import sbylib.engine.project.modulecontext;
+import sbylib.engine.project.modulestatus;
 import sbylib.engine.promise;
 
-// TODO: implement seriously
-bool isModule(string file) 
-    in (file.exists)
-{
-    return readText(file).split("\n")
-        .map!(chomp)
-        .filter!(line => line.startsWith("//") is false)
-        .filter!(line => line.canFind("mixin"))
-        .filter!(line => line.canFind("Register"))
-        .empty is false;
-}
-
 class Module(RetType) {
-
-    private enum State { NotYet, Compling, Success, Fail }
-
     private alias FuncType = RetType function(Project, ModuleContext);
 
+    const string path;
     private ModuleContext _context;
-    private FuncType func;
-    private DLL dll;
     private Project proj;
-    string path;
-    string name;
-    string[] dependencies;
-    Promise!(RetType) execution;
-    private immutable ubyte[16] hash;
-    CompileErrorException compileError;
-    Exception runtimeError;
+    private DLL dll;
+    private ModuleStatusList statusList;
 
-    this(Project proj, string path) {
-        this.path = path;
+    private FuncType func;
+    private string _name;
+    private string[] _dependencies;
+
+    this(Project proj, ModuleStatusList statusList, string path) {
         this.proj = proj;
+        this.statusList = statusList;
+        this.path = path;
         this._context = new ModuleContext;
-        this.hash = md5Of(readText(path));
+
+        this.status = ModuleStatus.Compiling;
         Compiler.compile(path)
         .error((Exception e) {
-            this.compileError = cast(CompileErrorException)e;
+            assert(this.status == ModuleStatus.Compiling);
+            this.status = tuple(ModuleStatus.CompileError, e.msg);
         })
         .then((DLL dll) {
             this.initFromDLL(dll);
+            assert(this.status == ModuleStatus.Compiling);
+            this.status = ModuleStatus.WaitingForRun;
+
+            when(dependencies.map!(d => proj.findPath(d)).all!(d => d != "" && statusList[d] == ModuleStatus.Running)).once({
+                this.execute(proj);
+            });
         });
     }
 
     ~this() {
+        if (this.status != ModuleStatus.Stopping)
+            this.stop();
+    }
+
+    void stop() {
         this.context.destroy();
+        this.status = ModuleStatus.Stopping;
         //this.dll.unload();
     }
     
@@ -68,86 +66,42 @@ class Module(RetType) {
         this.func = dll.loadFunction!(FuncType)(functionName);
 
         auto getModuleName = dll.loadFunction!(string function())("getModuleName");
-        this.name = getModuleName();
+        this._name = getModuleName();
 
         auto getDependencies = dll.loadFunction!(string[] function())("getDependencies");
-        this.dependencies = getDependencies();
+        this._dependencies = getDependencies();
     }
 
-    void execute() 
-        in (execution is null)
+    private void execute(Project proj) 
+        in (status == ModuleStatus.WaitingForRun)
     {
-        execution = promise!({
+        this.status = ModuleStatus.Running;
+        try {
             context.bind();
-            return func(proj, context);
-        }).error((Exception e) {
-            this.runtimeError = e;
-        });
-    }
-
-    package bool hasLoaded() {
-        return func !is null;
-    }
-
-    package bool hasCompileError() {
-        return compileError !is null;
-    }
-
-    package bool hasRuntimeError() {
-        return runtimeError !is null;
-    }
-
-    package bool executed() {
-        return execution && execution.finished;
-    }
-
-    package bool hasModified() {
-        return md5Of(readText(path)) != this.hash;
+            func(proj, context);
+        } catch (Exception e) {
+            assert(this.status == ModuleStatus.Running);
+            status = tuple(ModuleStatus.RuntimeError, e.toString());
+        }
     }
 
     ModuleContext context() {
         return _context;
     }
-}
 
-template Register(alias f, string mn = moduleName!f) {
-    static if (is(Parameters!f == AliasSeq!(Project, ModuleContext))) {
-        private enum fn = f.mangleof;
-        private alias d = getUDAs!(f, Depends);
-        static if (d.length == 0) {
-            private enum ds = "[]";
-        } else {
-            private enum ds = d[0].moduleNameList.map!(s => `"`~s~`"`).join(",").format!"[%s]";
-        }
-
-        enum Register = format!q{
-            extern(C) string getFunctionName() { return "%s"; }
-            extern(C) string getModuleName() { return "%s"; }
-            extern(C) string[] getDependencies() { return %s; }
-        }(fn, mn, ds);
-    } else {
-        ReturnType!f __entryPoint__(Project proj, ModuleContext context) {
-            Parameters!f args;
-            static foreach (i, a; args) {
-                static if (is(typeof(a) == ModuleContext)) {
-                    a = context;
-                } else static if (is(typeof(a) == Project)) {
-                    a = proj;
-                } else {
-                    a = proj.get!(typeof(a))(ParameterIdentifierTuple!f[i]);
-                }
-            }
-            return f(args);
-        }
-
-        enum Register = Register!(__entryPoint__, moduleName!f);
+    private void status(T)(T t) {
+        statusList[path] = t;
     }
-}
 
-struct Depends {
-    string[] moduleNameList;
-}
+    private ModuleStatus status() const {
+        return statusList[path];
+    }
 
-Depends depends(string[] moduleNameList...) {
-    return Depends(moduleNameList);
+    package string name() const { return  _name; }
+    package const(string[]) dependencies() const { return _dependencies; }
+
+    package string[] inputFiles() {
+        auto c = CompileConfig(path);
+        return c.mainFile ~ c.inputFiles;
+    }
 }

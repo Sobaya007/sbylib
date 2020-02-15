@@ -15,6 +15,10 @@ mixin template UseMaterial(MaterialType) {
     private void delegate() _unregister;
 
     this(Geometry, Args...)(Window window, Geometry geom, Args args) {
+        constructor(window, geom, args);
+    }
+
+    void constructor(Geometry, Args...)(Window window, Geometry geom, Args args) {
         auto tmp = MaterialType(window).build(geom, args);
         _data = tmp[0];
         auto register = tmp[1];
@@ -26,6 +30,7 @@ mixin template UseMaterial(MaterialType) {
     ~this() {
         this._data.destroy();
     }
+
 
     void unregister() {
         _unregister();

@@ -15,7 +15,7 @@ interface CollisionPolygon : CollisionShape {
         override AABB getAABB() {
             if (aabb.isNull)
                 aabb = AABB.fromVertex(this.vertices);
-            return aabb;
+            return aabb.get();
         }
     }
 

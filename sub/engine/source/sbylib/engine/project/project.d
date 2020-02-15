@@ -2,100 +2,23 @@ module sbylib.engine.project.project;
 
 import std;
 import sbylib.event;
-import sbylib.engine.project.metainfo : MetaInfo;
-import sbylib.engine.project.moduleunit : Module, isModule;
+import sbylib.engine.project.metainfo;
+import sbylib.engine.project.moduleunit;
+import sbylib.engine.project.modulestatus;
 import sbylib.engine.compiler : CompileErrorException;
-import sbylib.engine.util : resourcePath, blue, yellow, cyan, green, red, magenda;
-
-enum ModuleStatus {
-    WaitingForCompile,
-    Compiling,
-    WaitingForRun,
-    Running,
-    CompileError,
-    RuntimeError
-}
-
-class ModuleStatusList {
-    private ModuleStatus[string] status;
-    private string[string] msg;
-
-    this(string[] keys) {
-        foreach (key; keys) {
-            status[key] = ModuleStatus.WaitingForCompile;
-        }
-        rewriteStatus();
-    }
-
-    ModuleStatus[] values() {
-        return status.values;
-    }
-
-    ModuleStatus opIndex(string key) {
-        return status[key];
-    }
-
-    ModuleStatus opIndexAssign(ModuleStatus s, string key) {
-        status[key] = s;
-        rewriteStatus();
-        return s;
-    }
-
-    void opIndexAssign(Tuple!(ModuleStatus, string) t, string key) {
-        status[key] = t[0];
-        msg[key] = t[1];
-        rewriteStatus();
-    }
-
-    private void rewriteStatus() {
-        clearScreen();
-        foreach (key, value; status) {
-            writefln("%30s : %20s", key, colorize(value));
-            if (value == ModuleStatus.CompileError) {
-                writeln(msg[key].split("\n").map!(s => " ".repeat.take(32).join ~ s).join("\n").magenda);
-            }
-            if (value == ModuleStatus.RuntimeError) {
-                writeln(msg[key].split("\n").map!(s => " ".repeat.take(32).join ~ s).join("\n").magenda);
-            }
-        }
-    }
-
-    private void clearScreen() {
-        writefln("\033[%d;%dH" ,0,0); // move cursor
-        writeln("\033[2J"); // clear screen
-    }
-
-    private string colorize(ModuleStatus status) {
-        final switch (status) {
-            case ModuleStatus.WaitingForCompile:
-                return status.to!string.blue;
-            case ModuleStatus.Compiling:
-                return status.to!string.yellow;
-            case ModuleStatus.WaitingForRun:
-                return status.to!string.cyan;
-            case ModuleStatus.Running:
-                return status.to!string.green;
-            case ModuleStatus.CompileError:
-                return status.to!string.red;
-            case ModuleStatus.RuntimeError:
-                return status.to!string.red;
-        }
-    }
-}
+import sbylib.engine.util : resourcePath;
 
 class Project {
 
     private alias VModule = Module!(void);
-
-    VModule[string] moduleList;
-
-    Variant[string] global;
     alias global this;
 
-    ModuleStatusList status;
+    VModule[string] moduleList;
+    Variant[string] global;
+    private ModuleStatusList status;
 
     this() {
-        status = new ModuleStatusList(this.projectFiles);
+        status = new ModuleStatusList();
         this.refreshPackage();
         this.loadAll();
     }
@@ -106,14 +29,6 @@ class Project {
         }
     }
 
-    void addFile(string file) {
-        if (file.dirName.exists is false)
-            file.dirName.mkdirRecurse();
-
-        resourcePath("template.d").copy(file);
-        this.refreshPackage();
-    }
-
 	private void loadAll() {
         foreach (file; this.projectFiles) {
             this.loadSingle(file);
@@ -121,80 +36,18 @@ class Project {
     }
 
     private void loadSingle(string file) {
-        status[file] = ModuleStatus.Compiling;
-
-        VModule mod = load(file);
+        auto mod = new VModule(this, status, file.absolutePath.buildNormalizedPath); 
         moduleList[mod.path] = mod;
 
-        when(mod.hasLoaded).once({
-            status[file] = ModuleStatus.WaitingForRun;
+        auto modified = mod.path.hasModified;
+        foreach (d; mod.dependencies)
+            modified = modified | d.hasModified;
+        foreach (f; mod.inputFiles)
+            modified = modified | f.hasModified;
 
-            // when all dependencies have been executed
-            when(mod.dependencies.map!(d => findModule(d)).all!(d => !d.empty && d.front.executed)).once({
-                status[file] = ModuleStatus.Running;
-                mod.execute();
-            });
+        when(modified).once({
+            this.loadSingle(file);
         });
-
-        when(mod.hasCompileError).once({
-            status[file] = tuple(ModuleStatus.CompileError, mod.compileError.msg);
-
-            when(shouldReload(mod)).once({
-                this.loadSingle(file);
-            });
-        });
-
-        when(mod.hasRuntimeError).once({
-            status[file] = tuple(ModuleStatus.RuntimeError, mod.runtimeError.toString());
-
-            when(shouldReload(mod)).once({
-                this.loadSingle(file);
-            });
-        });
-    }
-
-    void reloadAll() {
-        const target = moduleList.values.filter!(mod => shouldReload(mod)).array;
-
-        // stop all targets
-        target.each!((mod) {
-            // can stop a module on which no module depends 
-            when(moduleList.values.map!(m => m.dependencies).join.all!(d => mod.name != d)).once({
-                moduleList.remove(mod.path);
-                mod.destroy();
-            });
-        });
-
-        // when all targets stop, restart
-        auto targetPaths = target.map!(t => t.path).array;
-        when(targetPaths.all!(key => key !in moduleList)).once({
-            targetPaths.each!((path) {
-                auto newMod = load(path);
-                moduleList[newMod.path] = newMod;
-
-                // when module is loaded and all its dependencies have been executed
-                when(newMod.hasLoaded
-                        && newMod.dependencies.map!(d => findModule(d)).all!(d => !d.empty && d.front.executed))
-                .once({
-                    newMod.execute();
-                });
-            });
-        });
-	}
-
-    private bool shouldReload(VModule mod) {
-        auto deps = mod.dependencies.map!(d => findModule(d));
-        foreach (d; deps) enforce(d.empty is false, format!"Dependency %s is not found."(d));
-        return mod.hasModified || deps.any!(d => shouldReload(d.front));
-    }
-
-    private VModule load(string file) {
-        return new VModule(this, file.absolutePath.buildNormalizedPath);
-    }
-
-    bool shouldFinish() {
-        return status.values.all!(s => s.among(ModuleStatus.CompileError, ModuleStatus.RuntimeError, ModuleStatus.WaitingForRun))
-            && moduleList.values.any!(mod => mod.hasCompileError || mod.hasRuntimeError);
     }
 
     auto get(T)(string name) {
@@ -251,13 +104,28 @@ class Project {
         }
     }
 
-    private auto findModule(string modName) {
+    // name -> path
+    string findPath(string name) {
+        auto findResult = moduleList.values.find!(mod => mod.name == name);
+        enforce(!findResult.empty || moduleList.values.any!(m => status[m.path] != ModuleStatus.Compiling), format!"Module '%s' is not found."(name));
+        return findResult.empty ? "" : findResult.front.path;
+    }
+
+    private auto findLoadedModule(string modName) {
         auto result = moduleList.values
-            .filter!(m => m.hasLoaded)
             .find!(m => m.name == modName);
-        if (moduleList.values.all!(mod => mod.hasLoaded)) {
-            enforce(!result.empty, "Cannot find module "~modName);
-        }
         return result;
     }
+}
+
+// TODO: implement seriously
+private bool isModule(string file) 
+    in (file.exists)
+{
+    return readText(file).split("\n")
+        .map!(chomp)
+        .filter!(line => line.startsWith("//") is false)
+        .filter!(line => line.canFind("mixin"))
+        .filter!(line => line.canFind("Register"))
+        .empty is false;
 }

@@ -125,6 +125,8 @@ struct stage { ShaderStage stage; }
 struct type { DescriptorType type; }
 
 mixin template DataSet() {
+    import std : replace;
+
     static foreach (ShaderStage ss; EnumMembers!ShaderStage) {
         mixin (q{
             mixin template Use${ss}Uniform(UniformType) {

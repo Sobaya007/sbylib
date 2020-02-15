@@ -24,10 +24,6 @@ void startEngine(EngineSetting setting, Variant[string] env = null) {
         proj[key] = value;
     }
 
-    when(proj.shouldFinish).then({
-        running = false;
-    });
-
     while (running) {
         FrameEventWatcher.update();
     }

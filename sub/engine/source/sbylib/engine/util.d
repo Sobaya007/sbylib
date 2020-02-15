@@ -120,14 +120,14 @@ void main()
     return result;
 }
 
-string color(int colorCode)(string str) {
-    return format!"\x1b[%dm%s\x1b[39m"(colorCode, str);
+string color(int frontcolorCode, int backcolormode)(string str) {
+    return format!"\x1b[%dm\x1b[%dm%s\x1b[39m\x1b[49m"(frontcolorCode, backcolormode, str);
 }
 
-alias red = color!(31); 
-alias green = color!(32); 
-alias yellow = color!(33); 
-alias blue = color!(34); 
-alias magenda = color!(35); 
-alias cyan = color!(36); 
-alias white = color!(37); 
+alias red     = color!(37,41); 
+alias green   = color!(37,42); 
+alias yellow  = color!(30,43); 
+alias blue    = color!(37,44); 
+alias magenda = color!(30,45); 
+alias cyan    = color!(30,46); 
+alias gray    = color!(30,47); 

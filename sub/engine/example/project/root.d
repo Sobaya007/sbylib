@@ -42,11 +42,6 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
         }
     }
 
-    with (context()) {
-        when((Ctrl + KeyButton.KeyR).pressed.on(window)).then({
-            proj.reloadAll();
-        });
-    }
 }
 
 private Window setupWindow(Window window) {

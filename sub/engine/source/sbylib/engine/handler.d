@@ -3,6 +3,7 @@ module sbylib.engine.handler;
 import std;
 import core.stdc.signal;
 import core.stdc.stdlib;
+import sbylib.engine.event;
 
 void registerErrorHandler() {
     signal(SIGSEGV, &handler);
@@ -15,6 +16,7 @@ private extern (C) {
 
     alias sigfn_t = void function(int);
     sigfn_t signal(int sig, sigfn_t func);
+    void function()[] finishCallbackList;
 
     void handler(int) {
         enum N = 10;
@@ -38,6 +40,7 @@ private extern (C) {
             .enumerate
             .each!(t => writefln("%d: %s", t.index, t.value));
         writeln("\x1b[39m");
+        engineStopEventList.each!(e => e.fire());
         exit(1);
     }
 }

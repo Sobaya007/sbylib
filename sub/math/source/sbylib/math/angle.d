@@ -151,39 +151,34 @@ struct Angle {
 }
 
 private mixin template RadianInputFunction(string func) {
-    import std.format;
-    mixin(format!q{
-
-auto %s(const Angle angle) {
-    import std.math : %s;
-    return %s(angle.asRadian());
+    import std : replace;
+    mixin(q{
+auto ${func}(const Angle angle) {
+    import std.math : ${func};
+    return ${func}(angle.asRadian());
 }
-
-    }(func, func, func));
+    }.replace("${func}", func));
 }
 
 private mixin template RadianOutputFunction(string func) {
-    import std.format;
+    import std : replace;
     mixin(format!q{
-
-auto %s(float angle) {
-    import std.math : %s;
-    return %s(angle).rad;
+auto ${func}(float angle) {
+    import std.math : ${func};
+    return ${func}(angle).rad;
 }
-
-    }(func, func, func));
+    }.replace("${func}", func));
 }
 
 private mixin template AngleInputFunction(string func) {
-    import std.format;
+    import std : replace;
     mixin(format!q{
-
-auto %s(const Angle angle) {
-    import std.math : %s;
-    return %s(angle.asDegree()).deg;
+auto ${func}(const Angle angle) {
+    import std.math : ${func};
+    return ${func}(angle.asDegree()).deg;
 }
 
-    }(func, func, func));
+    }.replace("${func}", func));
 }
 
 mixin RadianInputFunction!("sin");

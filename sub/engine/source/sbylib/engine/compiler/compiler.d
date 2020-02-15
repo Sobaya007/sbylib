@@ -28,16 +28,7 @@ static:
 
     auto compile(string inputFileName) {
         try {
-            auto dependencies = memoize!dependentLibraries();
-            auto config = immutable CompileConfig(
-                    inputFileName,
-                    DScanner.importListRecursive!((string f) => isProjectFile(f))(inputFileName)
-                        .filter!((string f) =>
-                            f.asAbsolutePath.asNormalizedPath.array != inputFileName.asAbsolutePath.asNormalizedPath.array)
-                        .array.idup,
-                    memoize!importPath.idup,
-                    dependencies.libraryPathList.idup,
-                    dependencies.librarySearchPathList.idup);
+            auto config = CompileConfig(inputFileName);
 
             return build(config).then((CompileResult r) {
                 if (!r.success) throw new CompileErrorException(r.output);
@@ -53,7 +44,7 @@ static:
         }
     }
 
-    private auto build(immutable CompileConfig config) {
+    private auto build(CompileConfig config) {
         const base = config.mainFile.baseName(config.mainFile.extension);
         auto seed = base in seedList ? seedList[base] : (seedList[base] = 0);
         auto outputFileName = getFileName(base, seed);
@@ -64,7 +55,7 @@ static:
                 .filter!(dep => dep.timeLastModified > outputFileName.timeLastModified);
 
             if (modifiedDependencies.empty) {
-                return promise!({ return CompileResult("", outputFileName, true); });
+                return promise!(() => CompileResult("", outputFileName, true));
             }
 
             seed = ++seedList[base];
@@ -93,28 +84,30 @@ static:
         });
     }
 
-    private bool isProjectFile(string f) {
-        const projectRoot = MetaInfo().projectDirectory.absolutePath;
-        f = f.absolutePath.asNormalizedPath.array;
-
-        while (f != f.dirName) {
-            if (f == projectRoot) return true;
-            f = f.dirName;
-        }
-        return false;
-    }
-
     private string getFileName(string base, int seed) {
         return format!"%s/%s%d.so"(cacheDir, base, seed);
     }
 }
 
-private struct CompileConfig {
+struct CompileConfig {
     string   mainFile;
     string[] inputFiles;
     string[] importPath;
     string[] libraryPath;
     string[] librarySearchPath;
+
+    this(string inputFileName) {
+        import sbylib.engine.util : getImportPath = importPath;
+        auto dependencies = memoize!dependentLibraries();
+
+        this.mainFile = inputFileName;
+        this.inputFiles = DScanner.importListRecursive!((string f) => isProjectFile(f))(inputFileName)
+            .filter!((string f) => f.asAbsolutePath.asNormalizedPath.array != inputFileName.asAbsolutePath.asNormalizedPath.array)
+            .array;
+        this.importPath = memoize!getImportPath;
+        this.libraryPath = dependencies.libraryPathList;
+        this.librarySearchPath = dependencies.librarySearchPathList;
+    }
 
     string[] createCommand(string outputFileName) const {
         version (DigitalMars) {
@@ -165,4 +158,15 @@ private struct CompileConfig {
         enforce(tmp.empty is false, "Library not found: " ~ p);
         return tmp.front;
     }
+}
+
+private bool isProjectFile(string f) {
+    const projectRoot = MetaInfo().projectDirectory.absolutePath;
+    f = f.absolutePath.asNormalizedPath.array;
+
+    while (f != f.dirName) {
+        if (f == projectRoot) return true;
+        f = f.dirName;
+    }
+    return false;
 }
