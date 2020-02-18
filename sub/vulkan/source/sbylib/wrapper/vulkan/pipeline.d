@@ -90,6 +90,7 @@ class Pipeline {
 
         const mixin VkTo!(VkPipelineMultisampleStateCreateInfo);
     }
+    alias DepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo;
 
     static struct ViewportStateCreateInfo {
         @vkProp() {

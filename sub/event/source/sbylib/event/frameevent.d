@@ -58,3 +58,34 @@ static:
         }
     }
 }
+
+unittest {
+    int count1;
+    when(Frame).then({
+        count1++;
+    });
+
+    int count2;
+    when(count1 % 2 == 0).then({
+        count2++;
+    });
+
+    int count3;
+    when(count1 > 2).then({
+        count3++;
+    });
+
+    int count4;
+    when(count1 > 2).once({
+        count4++;
+    });
+
+    foreach (i; 0..5) {
+        FrameEventWatcher.update();
+    }
+
+    assert(count1 == 5);
+    assert(count2 == 2);
+    assert(count3 == 3);
+    assert(count4 == 1);
+}

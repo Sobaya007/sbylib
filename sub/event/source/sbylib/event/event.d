@@ -82,6 +82,12 @@ class Event(Args...) : IEvent {
     override EventContext[] context() {
         return _context;
     }
+
+    static Event create(Args...)(Event!Args delegate(void delegate()) cb) {
+        auto event = new Event;
+        cb(&event.fire).ownedBy(event);
+        return event;
+    }
 }
 
 Event!(Args) then(Args...)(Event!(Args) event, void delegate() callback) 
@@ -128,6 +134,10 @@ Event!(Args) once(Args...)(Event!(Args) event, void delegate() callback)
 
 Event!(Args) once(Args...)(Event!(Args) event, void delegate(Args) callback) {
     return event.then(callback).once;
+}
+
+Event!(Args) ownedBy(Args...)(Event!(Args) event, IEvent owner) {
+    return event.until(() => !owner.isAlive);
 }
 
 alias VoidEvent = Event!();

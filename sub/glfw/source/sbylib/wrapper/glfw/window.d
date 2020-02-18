@@ -57,26 +57,346 @@ class Window {
         glfwFocusWindow(window);
     }
 
-    int[2] framebufferSize() {
-        int[2] result;
-        glfwGetFramebufferSize(window, &result[0], &result[1]);
-        return result;
-    }
-
     bool focused() {
         return getAttribute(Attribute.Focused) == GLFW_TRUE;
+    }
+
+    void setFocusCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, int focused) nothrow 
+            in (window in windowMap)
+        {
+            call!(cb, catcher)(getWindow(window), focused == GLFW_TRUE);
+        }
+        glfwSetWindowFocusCallback(window, &callback);
+    } 
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setFocusCallback!((w, f) {}, (Exception e) {});
+
+            window.focus();
+            assert(window.focused);
+        }
+    }
+
+    void minimize() {
+        glfwIconifyWindow(window);
     }
 
     bool minimized() {
         return getAttribute(Attribute.Iconified) == GLFW_TRUE;
     }
 
+    void setIconifyCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, int iconified) nothrow 
+            in (window in windowMap)
+        {
+            call!(cb, catcher)(getWindow(window), iconified == GLFW_TRUE);
+        }
+        glfwSetWindowIconifyCallback(window, &callback);
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setIconifyCallback!((w, i) {} , (Exception e) {});
+
+            window.minimize();
+            Thread.sleep(1.seconds);
+            assert(window.minimized);
+        }
+    }
+
+    void maximize() {
+        glfwMaximizeWindow(window);
+    }
+
     bool maximized() {
         return getAttribute(Attribute.Maximized) == GLFW_TRUE;
     }
 
+    int[2] pos(int[2] p...) {
+        glfwSetWindowPos(window, p[0], p[1]);
+        return this.pos;
+    }
+
+    int[2] pos() {
+        int[2] result;
+        glfwGetWindowPos(window, &result[0], &result[1]);
+        return result;
+    }
+
+    int x(int x) {
+        this.pos = [x, this.y];
+        return x;
+    }
+
+    int y(int y) {
+        this.pos = [this.x, y];
+        return y;
+    }
+
+    int x() {
+        return pos[0];
+    }
+
+    int y() {
+        return pos[1];
+    }
+
+    void setPosCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, int x, int y) nothrow 
+            in (window in windowMap)
+        {
+            int[2] pos = [x,y];
+            call!(cb, catcher)(getWindow(window), pos);
+        }
+        glfwSetWindowPosCallback(window, &callback);
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setPosCallback!((w, p) {}, (Exception e) {});
+
+            window.pos = [100, 100];
+            Thread.sleep(1.seconds);
+            assert(window.pos == [100, 100]);
+
+            window.x = 200;
+            Thread.sleep(1.seconds);
+            assert(window.x == 200);
+
+            window.y = 150;
+            Thread.sleep(1.seconds);
+            assert(window.y == 150);
+        }
+    }
+
+    int[2] size(int[2] size...) {
+        glfwSetWindowSize(window, size[0], size[1]);
+        return this.size;
+    }
+
+    int width(int w) {
+        this.size = [w, this.height];
+        return w;
+    }
+
+    int height(int h) {
+        this.size = [this.width, h];
+        return h;
+    }
+
+    int[2] size() {
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        return [width, height];
+    }
+
+    int width() {
+        return size[0];
+    }
+
+    int height() {
+        return size[1];
+    }
+
+    void setSizeCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, int width, int height) nothrow 
+            in (window in windowMap)
+        {
+            int[2] size = [width, height];
+            call!(cb, catcher)(getWindow(window), size);
+        }
+        glfwSetWindowSizeCallback(window, &callback);
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setSizeCallback!((w, s) {}, (Exception e) {});
+
+            window.size = [100, 100];
+            Thread.sleep(1.seconds);
+            assert(window.size == [100, 100]);
+
+            window.width = 200;
+            Thread.sleep(1.seconds);
+            assert(window.width == 200);
+
+            window.height = 150;
+            Thread.sleep(1.seconds);
+            assert(window.height == 150);
+        }
+    }
+
+    void hide() {
+        glfwHideWindow(window);
+    }
+
+    void restore() {
+        glfwRestoreWindow(window);
+    }
+
+    bool visible(bool v) {
+        if (v) restore();
+        else hide();
+        return v;
+    }
+
     bool visible() {
         return getAttribute(Attribute.Visible) == GLFW_TRUE;
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.visible = true;
+            Thread.sleep(1.seconds);
+            assert(window.visible == true);
+
+            window.visible = false;
+            Thread.sleep(1.seconds);
+            assert(window.visible == false);
+        }
+    }
+
+    /**
+    Returns true if this window should close.
+
+    Returns: true if this window should close
+    */
+    bool shouldClose(bool shouldClose) {
+        glfwSetWindowShouldClose(window, shouldClose ? GLFW_TRUE : GLFW_FALSE);
+        return shouldClose;
+    }
+
+    bool shouldClose() {
+        return glfwWindowShouldClose(window) == GLFW_TRUE;
+    }
+
+    void setCloseCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window) nothrow 
+            in (window in windowMap)
+        {
+            call!(cb, catcher)(getWindow(window));
+        }
+        glfwSetWindowCloseCallback(window, &callback);
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setCloseCallback!((w) {}, (Exception e) {});
+
+            window.shouldClose = false;
+            assert(window.shouldClose == false);
+
+            window.shouldClose = true;
+            assert(window.shouldClose == true);
+        }
+    }
+
+    string clipboard(string str) {
+        import std.string : toStringz;
+
+        glfwSetClipboardString(window, str.toStringz);
+        return str;
+    }
+
+    string clipboard() {
+        import std.conv : to;
+        import std.string : fromStringz;
+
+        return glfwGetClipboardString(window).fromStringz.to!string;
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.clipboard = "foo";
+            assert(window.clipboard == "foo");
+        }
+    }
+
+    double[2] mousePos(double[2] mousePos) {
+        glfwSetCursorPos(window, mousePos[0], mousePos[1]);
+        return mousePos;
+    }
+
+    double[2] mousePos() {
+        double[2] result;
+        glfwGetCursorPos(window, &result[0], &result[1]);
+        return result;
+    }
+
+    void setMousePosCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, double x, double y) nothrow 
+            in (window in windowMap)
+        {
+            double[2] pos = [x,y];
+            call!(cb, catcher)(getWindow(window), pos);
+        }
+        glfwSetCursorPosCallback(window, &callback);
+    }
+
+    unittest {
+        import sbylib.wrapper.glfw.windowbuilder : WindowBuilder;
+        import core.thread : Thread, seconds;
+        with (WindowBuilder()) {
+            auto window = buildWindow();
+            scope (exit) window.destroy();
+
+            window.setMousePosCallback!((w, p) {}, (Exception e) {});
+
+            window.mousePos = [100, 120];
+            assert(window.mousePos == [100, 120]);
+        }
+    }
+
+    int[2] framebufferSize() {
+        int[2] result;
+        glfwGetFramebufferSize(window, &result[0], &result[1]);
+        return result;
+    }
+
+    void setFramebufferSizeCallback(alias cb, alias catcher)() {
+        extern(C) void callback(GLFWwindow *window, int width, int height) nothrow 
+            in (window in windowMap)
+        {
+            int[2] size = [width, height];
+            call!(cb, catcher)(getWindow(window), size);
+        }
+        glfwSetFramebufferSizeCallback(window, &callback);
     }
 
     bool resizable() {
@@ -139,77 +459,13 @@ class Window {
         return Screen(screen);
     }
 
-    int[2] pos() {
-        int[2] result;
-        glfwGetWindowPos(window, &result[0], &result[1]);
-        return result;
-    }
-
-    int[2] size() {
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
-        return [width, height];
-    }
-
-    int width() {
-        return size[0];
-    }
-
-    int height() {
-        return size[1];
-    }
-
     void* userPointer() {
         return glfwGetWindowUserPointer(window);
-    }
-
-    void hide() {
-        glfwHideWindow(window);
-    }
-
-    void minimize() {
-        glfwIconifyWindow(window);
-    }
-
-    void maximize() {
-        glfwMaximizeWindow(window);
-    }
-
-    void restore() {
-        glfwRestoreWindow(window);
-    }
-
-    void setFramebufferSizeCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, int width, int height) nothrow 
-            in (window in windowMap)
-        {
-            int[2] size = [width, height];
-            call!(cb, catcher)(getWindow(window), size);
-        }
-        glfwSetFramebufferSizeCallback(window, &callback);
     }
 
     void aspectRatio(int[2] ratio) {
         glfwSetWindowAspectRatio(window, ratio[0], ratio[1]);
     }
-
-    void setCloseCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window) nothrow 
-            in (window in windowMap)
-        {
-            call!(cb, catcher)(getWindow(window));
-        }
-        glfwSetWindowCloseCallback(window, &callback);
-    }
-
-    void setFocusCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, bool focused) nothrow 
-            in (window in windowMap)
-        {
-            call!(cb, catcher)(getWindow(window), focused);
-        }
-        glfwSetWindowFocusCallback(window, &callback);
-    } 
 
     void setIcon(Image[] image) {
         import std.algorithm : map;
@@ -217,15 +473,6 @@ class Window {
 
         const imageList = image.map!(i => *i.image).array;
         glfwSetWindowIcon(window, cast(int)image.length, imageList.ptr);
-    }
-
-    void setIconifyCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, bool iconified) nothrow 
-            in (window in windowMap)
-        {
-            call!(cb, catcher)(getWindow(window), iconified);
-        }
-        glfwSetWindowIconifyCallback(window, &callback);
     }
 
     void setFullScreenMode(Screen screen, int[2] size, int refreshRate = DontCare) {
@@ -236,21 +483,6 @@ class Window {
         glfwSetWindowMonitor(window, null, pos[0], pos[1], size[0], size[1], 0);
     }
 
-    int[2] pos(int[2] p...) {
-        glfwSetWindowPos(window, p[0], p[1]);
-        return this.pos;
-    }
-
-    void setPosCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, int x, int y) nothrow 
-            in (window in windowMap)
-        {
-            int[2] pos = [x,y];
-            call!(cb, catcher)(getWindow(window), pos);
-        }
-        glfwSetWindowPosCallback(window, &callback);
-    }
-
     void setRefreshCallback(alias cb, alias catcher)() {
         extern(C) void callback(GLFWwindow *window) nothrow 
             in (window in windowMap)
@@ -258,26 +490,6 @@ class Window {
             call!(cb, catcher)(getWindow(window));
         }
         glfwSetWindowRefreshCallback(window, &callback);
-    }
-
-    bool shouldClose(bool shouldClose) {
-        glfwSetWindowShouldClose(window, shouldClose ? GLFW_TRUE : GLFW_FALSE);
-        return shouldClose;
-    }
-
-    int[2] size(int[2] size...) {
-        glfwSetWindowSize(window, size[0], size[1]);
-        return this.size;
-    }
-
-    void setSizeCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, int width, int height) nothrow 
-            in (window in windowMap)
-        {
-            int[2] size = [width, height];
-            call!(cb, catcher)(getWindow(window), size);
-        }
-        glfwSetWindowSizeCallback(window, &callback);
     }
 
     void setSizeLimit(int[2] min, int[2] max) 
@@ -295,6 +507,10 @@ class Window {
         return this.title;
     }
 
+    string title() const {
+        return mTitle;
+    }
+
     void* userPointer(void* ptr) {
         glfwSetWindowUserPointer(window, ptr);
         return ptr;
@@ -306,32 +522,6 @@ class Window {
 
     void swapBuffers() {
         window.glfwSwapBuffers();
-    }
-
-    string title() const {
-        return mTitle;
-    }
-
-    /**
-    Returns true if this window should close.
-
-    Returns: true if this window should close
-    */
-    bool shouldClose() {
-        return glfwWindowShouldClose(window) == GLFW_TRUE;
-    }
-
-    string clipboard() {
-        import std.conv : to;
-        import std.string : fromStringz;
-
-        return glfwGetClipboardString(window).fromStringz.to!string;
-    }
-
-    double[2] mousePos() {
-        double[2] result;
-        glfwGetCursorPos(window, &result[0], &result[1]);
-        return result;
     }
 
     CursorMode cursorMode() {
@@ -383,13 +573,6 @@ class Window {
         glfwSetCharModsCallback(window, &callback);
     }
 
-    string clipboard(string str) {
-        import std.string : toStringz;
-
-        glfwSetClipboardString(window, str.toStringz);
-        return str;
-    }
-
     Cursor cursor(Cursor cursor) {
         glfwSetCursor(window, cursor.cursor);
         return cursor;
@@ -402,21 +585,6 @@ class Window {
             call!(cb, catcher)(getWindow(window), enter == GLFW_TRUE);
         }
         glfwSetCursorEnterCallback(window, &callback);
-    }
-
-    double[2] mousePos(double[2] mousePos) {
-        glfwSetCursorPos(window, mousePos[0], mousePos[1]);
-        return mousePos;
-    }
-
-    void setMousePosCallback(alias cb, alias catcher)() {
-        extern(C) void callback(GLFWwindow *window, double x, double y) nothrow 
-            in (window in windowMap)
-        {
-            double[2] pos = [x,y];
-            call!(cb, catcher)(getWindow(window), pos);
-        }
-        glfwSetCursorPosCallback(window, &callback);
     }
 
     void setDropCallback(alias cb, alias catcher)() {

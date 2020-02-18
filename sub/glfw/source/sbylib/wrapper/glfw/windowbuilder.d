@@ -280,3 +280,20 @@ struct WindowBuilder {
         glfwWindowHint(hint, value);
     }
 }
+
+unittest {
+    with (WindowBuilder()) {
+        width = 300;
+        height = 300;
+        title = "poyo";
+        visible = false;
+
+        auto window = buildWindow();
+        scope (exit) window.destroy();
+
+        assert(window.width == 300);
+        assert(window.height == 300);
+        assert(window.title == "poyo");
+        assert(window.visible == false);
+    }
+}

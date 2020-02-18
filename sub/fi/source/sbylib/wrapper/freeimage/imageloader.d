@@ -213,23 +213,26 @@ class ImageLoader {
         return FreeImage().getFileType(path);
     }
 
-    private static FIBITMAP* load(ImageFormat format, string path, int option = 0)
+    private static FIBITMAP* load(ImageFormat fmt, string path, int option = 0)
+    in (exists(path), format!"'%s' does not exist."(path))
     out(result; result, path ~ " exists, but cannot load.")
     {
-        return FreeImage().load(format, path, option);
+        return FreeImage().load(fmt, path, option);
     }
 
     unittest {
+        import std : buildNormalizedPath;
         import std.exception : assertThrown, assertNotThrown;
         import core.exception : AssertError;
 
-        assertThrown!(AssertError)(ImageLoader.loadAsGif("test/dman.png"));
-        assertThrown!(AssertError)(ImageLoader.loadAsIco("test/dman.png"));
-        assertThrown!(AssertError)(ImageLoader.loadAsJpeg("test/dman.png"));
-        assertNotThrown!(AssertError)(ImageLoader.loadAsPcd("test/dman.png"));
-        assertNotThrown!(AssertError)(ImageLoader.loadAsPng("test/dman.png"));
-        assertThrown!(AssertError)(ImageLoader.loadAsRaw("test/dman.png"));
-        assertThrown!(AssertError)(ImageLoader.loadAsTarga("test/dman.png"));
-        assertThrown!(AssertError)(ImageLoader.loadAsTiff("test/dman.png"));
+        auto path = __FILE_FULL_PATH__.buildNormalizedPath("../../../../../test/dman.png");
+        assertThrown!(AssertError)(ImageLoader.loadAsGif(path));
+        assertThrown!(AssertError)(ImageLoader.loadAsIco(path));
+        assertThrown!(AssertError)(ImageLoader.loadAsJpeg(path));
+        assertNotThrown!(AssertError)(ImageLoader.loadAsPcd(path));
+        assertNotThrown!(AssertError)(ImageLoader.loadAsPng(path));
+        assertThrown!(AssertError)(ImageLoader.loadAsRaw(path));
+        assertThrown!(AssertError)(ImageLoader.loadAsTarga(path));
+        assertThrown!(AssertError)(ImageLoader.loadAsTiff(path));
     }
 }

@@ -7,6 +7,8 @@ import sbylib.graphics.util.vulkancontext;
 
 class VBuffer(T) {
 
+    alias Type = T;
+
     private {
         @own {
             Buffer _buffer;

@@ -291,3 +291,10 @@ private class KeyEventWatcher {
         }
     }
 }
+
+unittest {
+    with (WindowBuilder()) {
+        auto window = buildWindow();
+        window.
+    }
+}

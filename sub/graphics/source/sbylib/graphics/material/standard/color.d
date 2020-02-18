@@ -14,144 +14,98 @@ import sbylib.graphics.util.own;
 import sbylib.graphics.util.vulkancontext;
 
 import sbylib.graphics.material.standard.renderpass;
-import sbylib.graphics.material.standard.material;
+import sbylib.graphics.material.standard.material2;
 
-class ColorMaterial {
+class ColorMaterial : Material2 {
 
-    enum MaxObjects = 10;
+    mixin VertexShaderSource!q{
+        #version 450
+        layout (location = 0) in vec3 position;
 
-    mixin Material!(DataSet);
+        layout (binding = 0) uniform UniformData {
+            mat4 worldMatrix;
+            mat4 viewMatrix;
+            mat4 projectionMatrix;
+        } uni;
+
+        void main() {
+            gl_Position = uni.projectionMatrix * uni.viewMatrix * uni.worldMatrix * vec4(position, 1);
+            gl_Position.y = -gl_Position.y;
+        }
+    };
+
+    mixin FragmentShaderSource!q{
+        #version 450
+        layout (location = 0) out vec4 fragColor;
+
+        layout (binding = 1) uniform UniformData {
+            vec4 color;
+        } uni;
+
+        void main() {
+            fragColor = uni.color;
+        }
+    };
 
     struct Vertex {
         vec3 position;
     }
+    mixin VertexType!Vertex;
 
-    private @own ShaderModule[] shaders;
-    private @own Pipeline pipeline;
+    immutable Pipeline.RasterizationStateCreateInfo rs = {
+        depthClampEnable: false,
+        rasterizerDiscardEnable: false,
+        polygonMode: PolygonMode.Fill,
+        cullMode: CullMode.None,
+        frontFace: FrontFace.CounterClockwise,
+        depthBiasEnable: false,
+        depthBiasConstantFactor: 0.0f,
+        depthBiasClamp: 0.0f,
+        depthBiasSlopeFactor: 0.0f,
+        lineWidth: 1.0f,
+    };
+    mixin Rasterization!(rs);
 
-    mixin ImplReleaseOwn;
+    immutable Pipeline.MultisampleStateCreateInfo ms = {
+        rasterizationSamples: SampleCount.Count1,
+        sampleShadingEnable: false,
+        alphaToCoverageEnable: false,
+        alphaToOneEnable: false,
+    };
+    mixin Multisample!(ms);
 
-    this(Window window, PrimitiveTopology topology) {
-        initialize(MaxObjects);
-        with (RenderContext) {
-            Pipeline.GraphicsCreateInfo pipelineCreateInfo = {
-                stages: [createStage(ShaderStage.Vertex, shaders, q{
-                    #version 450
-                    layout (location = 0) in vec3 position;
+    immutable Pipeline.DepthStencilStateCreateInfo ds = {
+        depthTestEnable: true,
+        depthWriteEnable: true,
+        depthCompareOp: CompareOp.Less,
+    };
+    mixin DepthStencil!(ds);
 
-                    layout (binding = 0) uniform UniformData {
-                        mat4 worldMatrix;
-                        mat4 viewMatrix;
-                        mat4 projectionMatrix;
-                    } uni;
-
-                    void main() {
-                        gl_Position = uni.projectionMatrix * uni.viewMatrix * uni.worldMatrix * vec4(position, 1);
-                        gl_Position.y = -gl_Position.y;
-                    }
-                }), createStage(ShaderStage.Fragment, shaders, q{
-                    #version 450
-                    layout (location = 0) out vec4 fragColor;
-
-                    layout (binding = 1) uniform UniformData {
-                        vec4 color;
-                    } uni;
-
-                    void main() {
-                        fragColor = uni.color;
-                    }
-                })],
-                vertexInputState: getVertexInputState!(Vertex),
-                inputAssemblyState: {
-                    topology: topology
-                },
-                viewportState: {
-                    viewports: [{
-                        x: 0.0f,
-                        y: 0.0f,
-                        width: window.width,
-                        height: window.height,
-                        minDepth: 0.0f,
-                        maxDepth: 1.0f
-                    }],
-                    scissors: [{
-                        offset: {
-                            x: 0,
-                            y: 0
-                        },
-                        extent: {
-                            width: window.width,
-                            height: window.height
-                        }
-                    }]
-                },
-                rasterizationState: {
-                    depthClampEnable: false,
-                    rasterizerDiscardEnable: false,
-                    polygonMode: PolygonMode.Fill,
-                    cullMode: CullMode.None,
-                    frontFace: FrontFace.CounterClockwise,
-                    depthBiasEnable: false,
-                    depthBiasConstantFactor: 0.0f,
-                    depthBiasClamp: 0.0f,
-                    depthBiasSlopeFactor: 0.0f,
-                    lineWidth: 1.0f,
-                },
-                multisampleState: {
-                    rasterizationSamples: SampleCount.Count1,
-                    sampleShadingEnable: false,
-                    alphaToCoverageEnable: false,
-                    alphaToOneEnable: false,
-                },
-                depthStencilState: {
-                    depthTestEnable: true,
-                    depthWriteEnable: true,
-                    depthCompareOp: CompareOp.Less,
-                },
-                colorBlendState: {
-                    logicOpEnable: false,
-                    attachments: [{
-                        blendEnable: false,
-                        colorWriteMask: ColorComponent.R
-                                      | ColorComponent.G
-                                      | ColorComponent.B
-                                      | ColorComponent.A,
-                    }]
-                },
-                layout: pipelineLayout,
-                renderPass: StandardRenderPass(window),
-                subpass: 0,
-            };
-            this.pipeline = Pipeline.create(VulkanContext.device, [pipelineCreateInfo])[0];
-        }
-    }
+    immutable Pipeline.ColorBlendStateCreateInfo cs = {
+        logicOpEnable: false,
+        attachments: [{
+            blendEnable: false,
+            colorWriteMask: ColorComponent.R
+                          | ColorComponent.G
+                          | ColorComponent.B
+                          | ColorComponent.A,
+        }]
+    };
+    mixin ColorBlend!(cs);
 
     struct VertexUniform {
         mat4 worldMatrix;
         mat4 viewMatrix;
         mat4 projectionMatrix;
     }
+    @binding(0) mixin Uniform!(ShaderStage.Vertex, VertexUniform);
 
     struct FragmentUniform {
         vec4 color;
     }
+    @binding(1) mixin Uniform!(ShaderStage.Fragment, FragmentUniform);
 
-    static class DataSet {
-        mixin StandardDataSet;
-        mixin UseVertex!(Vertex);
-        mixin UseIndex!(uint);
-        @binding(0) mixin UseVertexUniform!(VertexUniform);
-        @binding(1) mixin UseFragmentUniform!(FragmentUniform);
-        mixin ImplDescriptorSet;
-        mixin ImplReleaseOwn;
-        mixin ImplRecord;
+    mixin MaxObjects!(10);
 
-        this(Geometry)(Geometry geom, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
-            initializeVertexBuffer(geom);
-            initializeIndexBuffer(geom);
-            initializeVertexUniform();
-            initializeFragmentUniform();
-            initializeDescriptorSet(descriptorPool, descriptorSetLayout);
-        }
-    }
+    mixin Instance;
 }
