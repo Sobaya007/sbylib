@@ -1,96 +1,110 @@
 module sbylib.graphics.util.compute;
 
-import std;
-import erupted;
-import sbylib.wrapper.glfw;
-import sbylib.wrapper.vulkan;
-import sbylib.math;
-
-import sbylib.graphics.util.buffer;
-import sbylib.graphics.util.uniformreference;
+public import std;
+public import sbylib.math;
+public import sbylib.wrapper.vulkan;
 import sbylib.graphics.util.own;
+import sbylib.graphics.util.descriptor;
 
-mixin template Compute() {
-    import sbylib.graphics.util.computecontext;
-    import sbylib.graphics.util.own;
-    import sbylib.graphics.util.pipelineutil;
-    import sbylib.graphics.util.vulkancontext;
-    import sbylib.wrapper.vulkan;
+class Compute {
+    
+    mixin Descriptor;
 
-    @own {
-        private {
-            ShaderModule shader;
-            Pipeline pipeline;
-            DescriptorSetLayout descriptorSetLayout;
-            PipelineLayout pipelineLayout;
-            DescriptorPool descriptorPool;
-        }
-        public {
-            CommandBuffer commandBuffer;
-            Fence fence;
-        }
-    }
-
-    private __gshared typeof(this) instance;
-
-    static opCall() {
-        if (instance) return instance;
-        return instance = new typeof(this);
-    }
-
-    static void deinitialize() {
-        if (instance) {
-            instance.destroy();
-        }
+    protected @own {
+        PipelineLayout pipelineLayout;
+        Pipeline pipeline;
     }
 
     mixin ImplReleaseOwn;
 
-    private mixin ImplPipelineUtil!(typeof(this)) P;
+    mixin template Instance() {
+        import std : getSymbolsByUDA;
+        import sbylib.wrapper.vulkan;
+        import sbylib.graphics.util;
 
-    private void initialize(string code) {
-        P.initialize(VulkanContext.device, 10);
+        alias This = typeof(this);
 
-        this.shader = P.createStage(VulkanContext.device, ShaderStage.Compute, code);
+        mixin ImplDescriptor;
 
-        Pipeline.ComputeCreateInfo pipelineCreateInfo = {
-            stage: {
-                stage: ShaderStage.Compute,
-                pName: "main",
-                _module: shader
-            },
-            layout: pipelineLayout,
-        };
-        this.pipeline = Pipeline.create(VulkanContext.device, [pipelineCreateInfo])[0];
+        this() {
+            auto device = VulkanContext.device;
 
-        this.commandBuffer = ComputeContext.createCommandBuffer(CommandBufferLevel.Primary, 1)[0];
+            initializeDescriptor(device);
 
-        this.fence = VulkanContext.createFence("compute shader fence");
-    }
+            PipelineLayout.CreateInfo pipelineLayoutCreateInfo = {
+                setLayouts: [descriptorSetLayout]
+            };
+            this.pipelineLayout = new PipelineLayout(device, pipelineLayoutCreateInfo);
 
-    mixin DataSet;
-    mixin ImplDescriptorSet;
+            Pipeline.ComputeCreateInfo pipelineCreateInfo = {
+                stage: getSymbolsByUDA!(typeof(this), stages)[0](device),
+                layout: pipelineLayout,
+            };
 
-    mixin template UseBuffer(Type, string name = "buffer") {
-        mixin(q{
-            private @stage(ShaderStage.Compute) @own VBuffer!Type _${name};
+            this.pipeline = Pipeline.create(device, [pipelineCreateInfo])[0];
+        }
 
-            protected void initialize(string mem : "${name}")(size_t size, BufferUsage usage) {
-                this._${name} = new VBuffer!Type(size, usage, MemoryProperties.MemoryType.Flags.HostVisible);
+        private static typeof(this) inst;
+
+        static Inst opCall(Queue queue = null) {
+            if (queue is null) queue = ComputeContext.queue;
+            if (inst is null) {
+                inst = new typeof(this);
+                ComputeContext.pushResource(inst);
             }
- 
-            UniformReference!(Type) ${name}() {
-                return typeof(return)(_${name}.memory);
-            }
-        }.replace("${name}", name));
-    }
+            return Inst(queue, inst.pipeline, inst.pipelineLayout, inst.descriptorPool, inst.descriptorSetLayout);
+        }
 
-    void record(int x, int y, int z) {
-        CommandBuffer.BeginInfo beginInfo;
-        this.commandBuffer.begin(beginInfo);
-        this.commandBuffer.cmdBindPipeline(PipelineBindPoint.Compute, pipeline);
-        this.commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
-        this.commandBuffer.cmdDispatch(x, y, z);
-        this.commandBuffer.end();
+        static struct Inst {
+            mixin ImplReleaseOwn;
+            mixin DefineInstanceMembers!(This);
+
+            private @own {
+                DescriptorSet descriptorSet;
+                CommandBuffer commandBuffer;
+            }
+            private Pipeline pipeline;
+            private PipelineLayout pipelineLayout;
+            private Queue queue;
+
+            this(Queue queue, Pipeline pipeline, PipelineLayout pipelineLayout, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
+                this.queue = queue;
+                this.pipeline = pipeline;
+                this.pipelineLayout = pipelineLayout;
+                initializeDefinedBuffers();
+                this.descriptorSet = createDescriptorSet(VulkanContext.device, descriptorPool, descriptorSetLayout);
+                this.commandBuffer = ComputeContext.createCommandBuffer(CommandBufferLevel.Primary, 1)[0];
+            }
+
+            auto dispatch(int x, int y, int z) {
+                with (commandBuffer) {
+                    CommandBuffer.BeginInfo beginInfo;
+                    begin(beginInfo);
+                    cmdBindPipeline(PipelineBindPoint.Compute, pipeline);
+                    cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
+                    cmdDispatch(x, y, z);
+                    end();
+                }
+                Queue.SubmitInfo submitInfo = {
+                    commandBuffers: [commandBuffer]
+                };
+
+                auto fence = VulkanContext.createFence("fence for dispatch compute");
+                queue.submit([submitInfo], fence);
+
+                struct Job {
+                    Fence fence;
+
+                    ~this() {
+                        fence.destroy();
+                    }
+
+                    void wait() {
+                        Fence.wait([fence], true, ulong.max);
+                    }
+                }
+                return Job(fence);
+            }
+        }
     }
 }

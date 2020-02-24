@@ -28,14 +28,15 @@ void entryPoint(ModuleContext context, string fontDir) {
         pos.x += size.x;
     }
 
-    auto textBoard = new TextBoard(window, geom.geom, store.texture);
+    auto textBoard = new TextBoard(window, geom.geom);
+    textBoard.tex = store.texture;
     context.pushResource(textBoard);
     with (context()) {
         when(Frame(88)).then({
             StandardRenderPass(window).submitRender();
         });
         when(Frame).then({
-            with (textBoard.vertexUniform) {
+            with (textBoard.vertexUniform.map) {
                 worldMatrix = textBoard.worldMatrix;
             }
         });

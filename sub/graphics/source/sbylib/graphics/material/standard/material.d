@@ -1,11 +1,15 @@
 module sbylib.graphics.material.standard.material;
 
-import std;
+public import std;
+public import sbylib.math;
+public import sbylib.wrapper.vulkan;
+public import sbylib.graphics.util.texture;
+
+import sbylib.wrapper.glfw;
 import erupted;
-import sbylib.wrapper.vulkan;
-import sbylib.math;
-import sbylib.graphics.util.buffer;
-import sbylib.graphics.util.rendercontext;
+import sbylib.graphics.util.descriptor;
+import sbylib.graphics.util.shader;
+import sbylib.graphics.util.own;
 
 mixin template UseMaterial(MaterialType) {
     alias DataType = MaterialType.DataSet;
@@ -23,8 +27,10 @@ mixin template UseMaterial(MaterialType) {
         _data = tmp[0];
         auto register = tmp[1];
         this._reregister = () => StandardRenderPass(window).register(register);
-        this._unregister = _reregister();
-        _data.pushReleaseCallback(_unregister);
+        when(Frame).once({
+            this._unregister = _reregister();
+            _data.pushReleaseCallback(_unregister);
+        });
     }
 
     ~this() {
@@ -41,72 +47,222 @@ mixin template UseMaterial(MaterialType) {
     }
 }
 
-mixin template Material(DataSet) {
-    import sbylib.graphics.material.standard.renderpass;
-    import sbylib.graphics.util.own;
-    import sbylib.graphics.util.pipelineutil;
-    import sbylib.graphics.util.vulkancontext;
-    import sbylib.wrapper.vulkan;
+class Material {
 
-    @own {
-        DescriptorSetLayout descriptorSetLayout;
+    mixin Descriptor;
+
+    protected @own {
         PipelineLayout pipelineLayout;
-        DescriptorPool descriptorPool;
+        Pipeline pipeline;
     }
 
     mixin ImplReleaseOwn;
-    private mixin ImplPipelineUtil!(DataSet) P;
 
-    private static typeof(this)[Tuple!(Window,PrimitiveTopology)] instance;
-
-    static opCall(Window window) {
-        return Builder(window);
-    }
-
-    static typeof(this) getInstance(Window window, PrimitiveTopology prim) {
-        auto key = tuple(window,prim);
-        if (auto r = key in instance) {
-            return *r;
+    mixin template Rasterization(Pipeline.RasterizationStateCreateInfo rs) {
+        private Pipeline.RasterizationStateCreateInfo rasterizationState () {
+            return rs;
         }
-        assert(window, "window is not registered.");
-        auto r = instance[key] = new typeof(this)(window, prim);
-        RenderContext(window).pushReleaseCallback({
-            r.destroy();
-            instance.remove(key);
-        });
-        return r;
     }
 
-    private void initialize(int maxObjects) {
-        P.initialize(VulkanContext.device, maxObjects);
-    }
-    
-    private Pipeline.ShaderStageCreateInfo createStage(ShaderStage stage, ref ShaderModule[] shaders, string code) {
-
-        auto mod = P.createStage(VulkanContext.device, stage, code);
-
-        shaders ~= mod;
-
-        Pipeline.ShaderStageCreateInfo result = {
-            stage: stage,
-            pName: "main",
-            _module: mod
-        };
-        return result;
+    mixin template Multisample(Pipeline.MultisampleStateCreateInfo ms) {
+        private Pipeline.MultisampleStateCreateInfo multisampleState () {
+            return ms;
+        }
     }
 
-    private VkVertexInputAttributeDescription[] createVertexAttributeDescriptions(Type)(uint binding) {
+    mixin template DepthStencil(Pipeline.DepthStencilStateCreateInfo ds) {
+        private Pipeline.DepthStencilStateCreateInfo depthStencilState () {
+            return ds;
+        }
+    }
+
+    mixin template ColorBlend(Pipeline.ColorBlendStateCreateInfo cs) {
+        private Pipeline.ColorBlendStateCreateInfo colorBlendState () {
+            return cs;
+        }
+    }
+
+    mixin template Instance() {
+        import sbylib.graphics.util;
+        import sbylib.graphics.material.standard.renderpass : StandardRenderPass;
+        import sbylib.wrapper.glfw : Window;
+        alias This = typeof(this);
+
+        mixin ImplDescriptor;
+
+        private static typeof(this)[Tuple!(Window,PrimitiveTopology)] instance;
+
+        static opCall(Window window) {
+            return Builder(window);
+        }
+
+        struct Builder {
+            Window window;
+
+            public auto build(Geometry)(Geometry geom) {
+                with (getInstance(window, geom.primitive)) {
+                    auto result = new DataSet(geom);
+                    auto register = (CommandBuffer commandBuffer) {
+                        with (result) {
+                            if (!descriptorSet) initializeDescriptorSet(descriptorPool, descriptorSetLayout);
+                            commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, pipeline);
+                            commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, [descriptorSet]);
+                            commandBuffer.cmdBindVertexBuffers(0, [vertexBuffer.buffer], [0]);
+
+                            record(geom, commandBuffer);
+                        }
+                    };
+                    return tuple(result, register);
+                }
+            }
+        }
+
+        static typeof(this) getInstance(Window window, PrimitiveTopology prim) {
+            auto key = tuple(window,prim);
+            if (auto r = key in instance) {
+                return *r;
+            }
+            assert(window, "window is not registered.");
+            auto r = instance[key] = new typeof(this)(window, prim);
+            RenderContext(window).pushReleaseCallback({
+                r.destroy();
+                instance.remove(key);
+            });
+            return r;
+        }
+
+        this(Window window, PrimitiveTopology topology) {
+            auto device = VulkanContext.device;
+
+            initializeDescriptor(device);
+
+            PipelineLayout.CreateInfo pipelineLayoutCreateInfo = {
+                setLayouts: [descriptorSetLayout]
+            };
+            this.pipelineLayout = new PipelineLayout(device, pipelineLayoutCreateInfo);
+
+            Pipeline.GraphicsCreateInfo pipelineCreateInfo = {
+                vertexInputState: vertexInputState!(This),
+                inputAssemblyState: {
+                    topology: topology
+                },
+                viewportState: {
+                    viewports: [{
+                        x: 0.0f,
+                        y: 0.0f,
+                        width: window.width,
+                        height: window.height,
+                        minDepth: 0.0f,
+                        maxDepth: 1.0f
+                    }],
+                    scissors: [{
+                        offset: {
+                            x: 0,
+                            y: 0
+                        },
+                        extent: {
+                            width: window.width,
+                            height: window.height
+                        }
+                    }]
+                },
+                rasterizationState: rasterizationState,
+                multisampleState: multisampleState,
+                depthStencilState: depthStencilState,
+                colorBlendState: colorBlendState,
+                layout: pipelineLayout,
+                renderPass: StandardRenderPass(window),
+                subpass: 0,
+            };
+
+            static foreach (f; getSymbolsByUDA!(typeof(this), stages)) {
+                pipelineCreateInfo.stages ~= f(device);
+            }
+            assert(pipelineCreateInfo.stages.length > 0);
+            this.pipeline = Pipeline.create(device, [pipelineCreateInfo])[0];
+        }
+
+        static class DataSet {
+            mixin ImplResourceStack;
+            mixin ImplReleaseOwn;
+            mixin DefineInstanceMembers!(This);
+
+            ~this() {
+                destroyStack();
+            }
+
+            alias Vertex = getSymbolsByUDA!(This, vertex)[0];
+            alias Index = uint;
+
+            private @own {
+                VBuffer!Vertex vertexBuffer;
+                VBuffer!Index indexBuffer;
+                DescriptorSet descriptorSet;
+            }
+
+            this(Geometry)(Geometry geom) {
+                this.vertexBuffer = new VBuffer!Vertex(geom.vertexList.map!((vIn) {
+                    Vertex v;
+                    static foreach (mem; __traits(allMembers, Vertex)) {
+                        static if (!isCallable!(__traits(getMember, Vertex, mem))) {
+                            __traits(getMember, v, mem) = __traits(getMember, vIn, mem);
+                        }
+                    }
+                    return v;
+                }).array, BufferUsage.VertexBuffer);
+
+                static if (Geometry.hasIndex) {
+                    this.indexBuffer = new VBuffer!Index(geom.indexList, BufferUsage.IndexBuffer);
+                }
+                initializeDefinedBuffers();
+            }
+
+            void initializeDescriptorSet(DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
+                this.descriptorSet = createDescriptorSet(VulkanContext.device, descriptorPool, descriptorSetLayout);
+            }
+
+            void record(Geometry)(Geometry geom, CommandBuffer commandBuffer) {
+                bool indexBound = false;
+                static if (Geometry.hasIndex) {
+                    assert(this.indexBuffer);
+                    if (this.indexBuffer) {
+                        cmdBindIndexBuffer(commandBuffer);
+                        commandBuffer.cmdDrawIndexed(cast(uint)geom.indexList.length, 1, 0, 0, 0);
+                        indexBound = true;
+                    }
+                }
+                if (!indexBound) {
+                    commandBuffer.cmdDraw(cast(uint)geom.vertexList.length, 1, 0, 0);
+                }
+            }
+
+            private void cmdBindIndexBuffer(CommandBuffer commandBuffer) {
+                static if (is(Index == ubyte)) {
+                    enum indexType = IndexType.Uint8;
+                } else static if (is(Index == ushort)) {
+                    enum indexType = IndexType.Uint16;
+                } else static if (is(Index == uint)) {
+                    enum indexType = IndexType.Uint32;
+                } else {
+                    static assert(false, "Invalid index type: " ~ Index.stringof);
+                }
+                commandBuffer.cmdBindIndexBuffer(indexBuffer.buffer, 0, indexType);
+            }
+        }
+    }
+
+    protected VkVertexInputAttributeDescription[] createVertexAttributeDescriptions(Vertex)(uint binding) {
         VkVertexInputAttributeDescription[] result;
 
         uint location = 0;
-        static foreach (name; __traits(allMembers, Type)) {
+        static foreach (name; __traits(allMembers, Vertex)) {
             {
-                static if (!isCallable!(__traits(getMember, Type, name))) {
+                static if (!isCallable!(__traits(getMember, Vertex, name))) {
                     VkVertexInputAttributeDescription description = {
                         binding: binding,
                         location: location++,
-                        format: getFormat!(typeof(__traits(getMember, Type, name))),
-                        offset: __traits(getMember, Type, name).offsetof
+                        format: getFormat!(typeof(__traits(getMember, Vertex, name))),
+                        offset: __traits(getMember, Vertex, name).offsetof
                     };
                     result ~= description;
                 }
@@ -116,7 +272,30 @@ mixin template Material(DataSet) {
         return result;
     }
 
-    Pipeline.VertexInputStateCreateInfo getVertexInputState(Vertex)() {
+    protected template getFormat(Type) {
+        static if (is(Type == float)) {
+            enum getFormat = VK_FORMAT_R32_SFLOAT;
+        } else static if (is(Type == vec2)) {
+            enum getFormat = VK_FORMAT_R32G32_SFLOAT;
+        } else static if (is(Type == vec3)) {
+            enum getFormat = VK_FORMAT_R32G32B32_SFLOAT;
+        } else static if (is(Type == vec4)) {
+            enum getFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+        } else static if (is(Type == int)) {
+            enum getFormat = VK_FORMAT_R32_SINT;
+        } else static if (is(Type == ivec2)) {
+            enum getFormat = VK_FORMAT_R32G32_SINT;
+        } else static if (is(Type == ivec3)) {
+            enum getFormat = VK_FORMAT_R32G32B32_SINT;
+        } else static if (is(Type == ivec4)) {
+            enum getFormat = VK_FORMAT_R32G32B32A32_SINT;
+        } else {
+            static assert(false, "Unsupported type: " ~ Type.stringof);
+        }
+    }
+
+    protected Pipeline.VertexInputStateCreateInfo vertexInputState(This)() {
+        alias Vertex = getSymbolsByUDA!(This, vertex)[0];
         Pipeline.VertexInputStateCreateInfo result = {
             vertexBindingDescriptions: [{
                 stride: Vertex.sizeof,
@@ -125,98 +304,5 @@ mixin template Material(DataSet) {
             vertexAttributeDescriptions: createVertexAttributeDescriptions!(Vertex)(0)
         };
         return result;
-    }
-
-    struct Builder {
-        Window window;
-
-        public auto build(Geometry, Args...)(Geometry geom, Args args) {
-            with (getInstance(window, geom.primitive)) {
-                auto result = new DataSet(geom, descriptorPool, descriptorSetLayout, args);
-                auto register = (CommandBuffer commandBuffer) {
-                    with (result) {
-                        commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, pipeline);
-                        commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, [descriptorSet]);
-                        commandBuffer.cmdBindVertexBuffers(0, [vertexBuffer.buffer], [0]);
-
-                        record(geom, commandBuffer);
-                    }
-                };
-                return tuple(result, register);
-            }
-        }
-    }
-}
-
-mixin template StandardDataSet() {
-    import sbylib.graphics.util.pipelineutil : DataSet;
-    import sbylib.graphics.util.functions : ImplResourceStack;
-
-    mixin ImplResourceStack;
-
-    ~this() {
-        destroyStack();
-    }
-
-    mixin DataSet D;
-
-    mixin template UseVertex(Vertex) {
-        @own VBuffer!Vertex vertexBuffer;
-        private void initializeVertexBuffer(Geometry)(Geometry geom) {
-            this.vertexBuffer = new VBuffer!Vertex(geom.vertexList.map!((vIn) {
-                Vertex v;
-                static foreach (mem; __traits(allMembers, Vertex)) {
-                    static if (!isCallable!(__traits(getMember, Vertex, mem))) {
-                        __traits(getMember, v, mem) = __traits(getMember, vIn, mem);
-                    }
-                }
-                return v;
-            }).array, BufferUsage.VertexBuffer);
-        }
-    }
-
-    mixin template UseIndex(Index) {
-        @own VBuffer!Index indexBuffer;
-        private void initializeIndexBuffer(Geometry)(Geometry geom) {
-            static if (Geometry.hasIndex) {
-                this.indexBuffer = new VBuffer!Index(geom.indexList, BufferUsage.IndexBuffer);
-            }
-        }
-        private void cmdBindIndexBuffer(CommandBuffer commandBuffer) {
-            static if (is(Index == ubyte)) {
-                enum indexType = IndexType.Uint8;
-            } else static if (is(Index == ushort)) {
-                enum indexType = IndexType.Uint16;
-            } else static if (is(Index == uint)) {
-                enum indexType = IndexType.Uint32;
-            } else {
-                static assert(false, "Invalid index type: " ~ Index.stringof);
-            }
-            commandBuffer.cmdBindIndexBuffer(indexBuffer.buffer, 0, indexType);
-        }
-    }
-
-    mixin template ImplDescriptorSet() {
-        mixin D.ImplDescriptorSet DS;
-
-        void initializeDescriptorSet(DescriptorPool pool, DescriptorSetLayout layout) {
-            DS.initializeDescriptorSet(VulkanContext.device, pool, layout);
-        }
-    }
-
-    mixin template ImplRecord() {
-        void record(Geometry)(Geometry geom, CommandBuffer commandBuffer) {
-            bool indexBound = false;
-            static if (__traits(hasMember, this, "indexBuffer") && Geometry.hasIndex) {
-                if (this.indexBuffer) {
-                    cmdBindIndexBuffer(commandBuffer);
-                    commandBuffer.cmdDrawIndexed(cast(uint)geom.indexList.length, 1, 0, 0, 0);
-                    indexBound = true;
-                }
-            }
-            if (!indexBound) {
-                commandBuffer.cmdDraw(cast(uint)geom.vertexList.length, 1, 0, 0);
-            }
-        }
     }
 }

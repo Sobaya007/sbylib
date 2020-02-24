@@ -56,6 +56,18 @@ class VBuffer(T) {
             ~this() {
                 deviceMemory.unmap();
             }
+
+            static if (isAggregateType!(T)) {
+                static foreach (mem; __traits(allMembers, T)) {
+                    static if (!isCallable!(__traits(getMember, T, mem))) {
+                        mixin(q{
+                            auto ref ${mem} () {
+                                return hostMemory[0].${mem};
+                            }
+                        }.replace("${mem}", mem));
+                    }
+                }
+            }
         }
 
         return HostMemory(this.memory, cast(T[])this.memory.map(0, this.size, 0));

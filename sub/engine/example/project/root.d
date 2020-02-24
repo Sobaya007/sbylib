@@ -21,23 +21,16 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
     setupBox(context, window, camera, resourceDir);
 
     with (TestCompute()) {
-        context.pushReleaseCallback({ TestCompute.deinitialize(); });
-
         auto x = iota(256).map!(i => TestCompute.Data(vec3(i),vec3(i),i)).array;
-        with (input) {
+        with (input.map) {
             len = 100;
             data[] = x[];
         }
 
-        with (ComputeContext) {
-            Queue.SubmitInfo submitInfo = {
-                commandBuffers: [commandBuffer]
-            };
-            queue.submit([submitInfo], fence);
-            Fence.wait([fence], true, ulong.max);
-        }
+        auto job = dispatch(256/16, 1, 1);
+        job.wait();
 
-        with (output) {
+        with (output.map) {
             assert(data == x);
         }
     }
@@ -75,7 +68,7 @@ private Floor setupFloor(ModuleContext context, Window window, Camera camera) {
     }
     with (context()) {
         when(Frame).then({
-            with (floor.vertexUniform) {
+            with (floor.vertexUniform.map) {
                 worldMatrix = floor.worldMatrix;
                 viewMatrix = camera.viewMatrix;
                 projectionMatrix = camera.projectionMatrix;
@@ -83,7 +76,7 @@ private Floor setupFloor(ModuleContext context, Window window, Camera camera) {
         });
     }
 
-    with (floor.fragmentUniform) {
+    with (floor.fragmentUniform.map) {
         tileSize = vec2(0.1f);
     }
     return floor;
@@ -104,7 +97,7 @@ private void setupBox(ModuleContext context, Window window, Camera camera, strin
 
         with (context()) {
             when(Frame).then({
-                with (box.vertexUniform) {
+                with (box.vertexUniform.map) {
                     worldMatrix = box.worldMatrix;
                     viewMatrix = camera.viewMatrix;
                     projectionMatrix = camera.projectionMatrix;

@@ -26,7 +26,7 @@ class DescriptorSetLayout {
         }
 
         @vkProp("pBindings", "bindingCount") {
-            const Binding[] bindings;
+            Binding[] bindings;
         }
 
         const mixin VkTo!(VkDescriptorSetLayoutCreateInfo);

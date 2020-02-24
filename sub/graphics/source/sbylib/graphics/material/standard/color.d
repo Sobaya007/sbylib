@@ -1,24 +1,10 @@
 module sbylib.graphics.material.standard.color;
 
-import std;
-import erupted;
-import sbylib.wrapper.glfw;
-import sbylib.wrapper.vulkan;
-import sbylib.math;
+import sbylib.graphics.material.standard.material;
 
-import sbylib.graphics.util.buffer;
-import sbylib.graphics.util.uniformreference;
-import sbylib.graphics.util.pipelineutil;
-import sbylib.graphics.util.rendercontext;
-import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
+class ColorMaterial : Material {
 
-import sbylib.graphics.material.standard.renderpass;
-import sbylib.graphics.material.standard.material2;
-
-class ColorMaterial : Material2 {
-
-    mixin VertexShaderSource!q{
+    mixin ShaderSource!(ShaderStage.Vertex, q{
         #version 450
         layout (location = 0) in vec3 position;
 
@@ -32,9 +18,9 @@ class ColorMaterial : Material2 {
             gl_Position = uni.projectionMatrix * uni.viewMatrix * uni.worldMatrix * vec4(position, 1);
             gl_Position.y = -gl_Position.y;
         }
-    };
+    });
 
-    mixin FragmentShaderSource!q{
+    mixin ShaderSource!(ShaderStage.Fragment, q{
         #version 450
         layout (location = 0) out vec4 fragColor;
 
@@ -45,12 +31,11 @@ class ColorMaterial : Material2 {
         void main() {
             fragColor = uni.color;
         }
-    };
+    });
 
-    struct Vertex {
+    @vertex struct Vertex {
         vec3 position;
     }
-    mixin VertexType!Vertex;
 
     immutable Pipeline.RasterizationStateCreateInfo rs = {
         depthClampEnable: false,
@@ -98,12 +83,13 @@ class ColorMaterial : Material2 {
         mat4 viewMatrix;
         mat4 projectionMatrix;
     }
-    @binding(0) mixin Uniform!(ShaderStage.Vertex, VertexUniform);
 
     struct FragmentUniform {
         vec4 color;
     }
-    @binding(1) mixin Uniform!(ShaderStage.Fragment, FragmentUniform);
+
+    @uniform @binding(0) @stage(ShaderStage.Vertex) VertexUniform vertexUniform;
+    @uniform @binding(1) @stage(ShaderStage.Fragment) FragmentUniform fragmentUniform;
 
     mixin MaxObjects!(10);
 

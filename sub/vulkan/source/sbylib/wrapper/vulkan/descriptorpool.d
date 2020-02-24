@@ -24,7 +24,7 @@ class DescriptorPool {
         }
 
         @vkProp("pPoolSizes", "poolSizeCount") {
-            const DescriptorPoolSize[] poolSizes;
+            DescriptorPoolSize[] poolSizes;
         }
 
         const mixin VkTo!(VkDescriptorPoolCreateInfo);
