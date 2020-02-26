@@ -21,7 +21,7 @@ void entryPoint() {
         appName: "example app",
         appVersion: VK_MAKE_VERSION(0,0,1),
         layerSettings: {
-            // settings: [new ApiDumpLayerSetting]
+            settings: [new ApiDumpLayerSetting]
         }
     };
     VDevice.initialize(deviceInfo, window);
