@@ -1,9 +1,8 @@
-module sbylib.graphics.util.fence;
+module sbylib.graphics.wrapper.fence;
 
 import std;
 import sbylib.wrapper.vulkan;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
 
 class VFence {
 

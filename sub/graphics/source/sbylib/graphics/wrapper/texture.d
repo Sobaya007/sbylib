@@ -1,4 +1,4 @@
-module sbylib.graphics.util.texture;
+module sbylib.graphics.wrapper.texture;
 
 import sbylib.wrapper.vulkan;
 

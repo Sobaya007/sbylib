@@ -1,9 +1,9 @@
-module sbylib.graphics.util.image;
+module sbylib.graphics.wrapper.image;
 
 import std;
 import sbylib.wrapper.vulkan;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
 
 class VImage {
 

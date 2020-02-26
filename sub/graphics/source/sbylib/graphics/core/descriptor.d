@@ -1,4 +1,4 @@
-module sbylib.graphics.util.descriptor;
+module sbylib.graphics.core.descriptor;
 
 mixin template Descriptor() {
     /*
@@ -16,7 +16,7 @@ mixin template Descriptor() {
     mixin template ShaderSource(ShaderStage stage, string code) {
         import std : to;
         import std.string : replace;
-        import sbylib.graphics.util.shader : ShaderUtil;
+        import sbylib.graphics.core.shader : ShaderUtil;
 
         mixin(q{
             private @stages Pipeline.ShaderStageCreateInfo createShaderModule${stage}(Device device) {
@@ -51,10 +51,10 @@ mixin template Descriptor() {
 
 mixin template ImplDescriptor() {
     mixin template DefineInstanceMembers(Descriptor) {
-        import sbylib.graphics.util.buffer : VBuffer;
-        import sbylib.graphics.util.texture : Texture;
         import sbylib.graphics.util.own : own;
         import sbylib.graphics.util.member : getMembersByUDA;
+        import sbylib.graphics.wrapper.buffer : VBuffer;
+        import sbylib.graphics.wrapper.texture : Texture;
         import std : format;
 
         static foreach (memberInfo; getMembersByUDA!(Descriptor, type)) {

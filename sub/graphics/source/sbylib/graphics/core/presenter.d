@@ -1,4 +1,4 @@
-module sbylib.graphics.util.presenter;
+module sbylib.graphics.core.presenter;
 
 import std;
 import erupted;
@@ -6,11 +6,11 @@ import sbylib.event;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.freeimage : FIImage = Image, FIImageType = ImageType;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.util.commandbuffer;
-import sbylib.graphics.util.fence;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.functions;
-import sbylib.graphics.util.image;
-import sbylib.graphics.util.vulkancontext;
+import sbylib.graphics.wrapper.commandbuffer;
+import sbylib.graphics.wrapper.fence;
+import sbylib.graphics.wrapper.image;
 
 class Presenter {
 

@@ -4,11 +4,11 @@ import std;
 import erupted;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.util.commandbuffer;
-import sbylib.graphics.util.fence;
-import sbylib.graphics.util.presenter;
+import sbylib.graphics.core.presenter;
+import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.commandbuffer;
+import sbylib.graphics.wrapper.fence;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
 
 class StandardRenderPass : RenderPass {
 

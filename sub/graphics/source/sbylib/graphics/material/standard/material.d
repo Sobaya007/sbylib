@@ -3,12 +3,12 @@ module sbylib.graphics.material.standard.material;
 public import std;
 public import sbylib.math;
 public import sbylib.wrapper.vulkan;
-public import sbylib.graphics.util.texture;
+public import sbylib.graphics.wrapper.texture;
 
 import sbylib.wrapper.glfw;
 import erupted;
-import sbylib.graphics.util.descriptor;
-import sbylib.graphics.util.shader;
+import sbylib.graphics.core.descriptor;
+import sbylib.graphics.core.shader;
 import sbylib.graphics.util.own;
 
 mixin template UseMaterial(MaterialType) {
@@ -83,7 +83,9 @@ class Material {
     }
 
     mixin template Instance() {
+        import sbylib.graphics.core;
         import sbylib.graphics.util;
+        import sbylib.graphics.wrapper;
         import sbylib.graphics.material.standard.renderpass : StandardRenderPass;
         import sbylib.wrapper.glfw : Window;
         alias This = typeof(this);

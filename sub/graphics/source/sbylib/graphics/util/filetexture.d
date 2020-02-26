@@ -4,12 +4,12 @@ import std;
 import erupted;
 import sbylib.wrapper.vulkan;
 import sbylib.wrapper.freeimage : FIImage = Image;
-import sbylib.graphics.util.buffer;
-import sbylib.graphics.util.commandbuffer;
-import sbylib.graphics.util.texture;
-import sbylib.graphics.util.image;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
+import sbylib.graphics.wrapper.buffer;
+import sbylib.graphics.wrapper.commandbuffer;
+import sbylib.graphics.wrapper.texture;
+import sbylib.graphics.wrapper.image;
 
 class FileTexture : Texture {
 

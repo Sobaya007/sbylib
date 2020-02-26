@@ -1,4 +1,4 @@
-module sbylib.graphics.util.shader;
+module sbylib.graphics.core.shader;
 
 import std;
 import sbylib.wrapper.vulkan;

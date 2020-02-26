@@ -1,10 +1,10 @@
-module sbylib.graphics.util.queue;
+module sbylib.graphics.wrapper.queue;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.util.fence;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
+import sbylib.graphics.wrapper.fence;
 
 class VQueue {
 

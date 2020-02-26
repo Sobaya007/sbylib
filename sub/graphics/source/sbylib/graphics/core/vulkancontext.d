@@ -1,13 +1,13 @@
-module sbylib.graphics.util.vulkancontext;
+module sbylib.graphics.core.vulkancontext;
 
 import std;
 import erupted;
 import sbylib.wrapper.vulkan;
 import sbylib.wrapper.glfw : Window, GLFW;
 import sbylib.graphics.layer;
-import sbylib.graphics.util.fence;
-import sbylib.graphics.util.queue;
 import sbylib.graphics.util.functions;
+import sbylib.graphics.wrapper.fence;
+import sbylib.graphics.wrapper.queue;
 
 class VulkanContext {
 static:

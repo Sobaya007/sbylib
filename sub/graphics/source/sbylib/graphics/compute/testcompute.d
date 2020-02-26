@@ -1,6 +1,6 @@
-module sbylib.util.testcompute;
+module sbylib.graphics.compute.testcompute;
 
-import sbylib.graphics.util.compute;
+import sbylib.graphics.compute.compute;
 
 class TestCompute : Compute {
 

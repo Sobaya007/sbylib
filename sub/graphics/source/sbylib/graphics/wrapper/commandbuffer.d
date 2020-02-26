@@ -1,10 +1,9 @@
-module sbylib.graphics.util.commandbuffer;
+module sbylib.graphics.wrapper.commandbuffer;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.util.image;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
 import erupted : VkCommandBuffer;
 
 class VCommandBuffer {

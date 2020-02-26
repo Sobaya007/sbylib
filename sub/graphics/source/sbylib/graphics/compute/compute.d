@@ -1,10 +1,10 @@
-module sbylib.graphics.util.compute;
+module sbylib.graphics.compute.compute;
 
 public import std;
 public import sbylib.math;
 public import sbylib.wrapper.vulkan;
+import sbylib.graphics.core.descriptor;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.descriptor;
 
 class Compute {
     
@@ -20,7 +20,9 @@ class Compute {
     mixin template Instance() {
         import std : getSymbolsByUDA;
         import sbylib.wrapper.vulkan;
+        import sbylib.graphics.core;
         import sbylib.graphics.util;
+        import sbylib.graphics.wrapper;
 
         alias This = typeof(this);
 

@@ -1,9 +1,9 @@
-module sbylib.graphics.util.buffer;
+module sbylib.graphics.wrapper.buffer;
 
 import std;
 import sbylib.wrapper.vulkan;
+import sbylib.graphics.core.vulkancontext;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.vulkancontext;
 
 class VBuffer(T) {
 

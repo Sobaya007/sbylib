@@ -6,7 +6,6 @@ import sbylib.engine;
 import sbylib.wrapper.assimp : PostProcessFlag;
 import sbylib.wrapper.glfw;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.util.testcompute;
 
 mixin(Register!(root));
 
