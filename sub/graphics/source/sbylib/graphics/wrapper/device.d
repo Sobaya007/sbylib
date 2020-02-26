@@ -1,4 +1,4 @@
-module sbylib.graphics.core.vulkancontext;
+module sbylib.graphics.wrapper.device;
 
 import std;
 import erupted;
@@ -9,44 +9,66 @@ import sbylib.graphics.util.functions;
 import sbylib.graphics.wrapper.fence;
 import sbylib.graphics.wrapper.queue;
 
-class VulkanContext {
-static:
+class VDevice {
+
+    struct CreateInfo {
+        VkPhysicalDeviceFeatures feature;
+        LayerSettings layerSettings;
+        string appName;
+        uint appVersion;
+    }
+
     Instance instance;
     PhysicalDevice gpu;
     Device device;
-    VQueue graphicsQueue, computeQueue;
+    alias device this;
+
+    private LayerSettings layerSettings;
 
     mixin ImplResourceStack;
 
-    mixin Sealable!(VkPhysicalDeviceFeatures, "feature");
-    LayerSettings layerSettings;
-
-    void initialize(string appName, uint appVersion, Window window) {
+    static void initialize(CreateInfo info, Window window) {
         import erupted.vulkan_lib_loader : loadGlobalLevelFunctions;
 
         const globalFunctionLoaded = loadGlobalLevelFunctions();
         assert(globalFunctionLoaded);
 
-        layerSettings.settings ~= new StandardValidationLayerSetting;
-        layerSettings.settings ~= new KhronosValidationLayerSetting;
-        pushReleaseCallback({ layerSettings.finalize(); });
+        info.layerSettings.settings ~= new StandardValidationLayerSetting;
+        info.layerSettings.settings ~= new KhronosValidationLayerSetting;
+        scope (exit) info.layerSettings.finalize();
 
         Instance.CreateInfo instanceCreateInfo = {
             applicationInfo: {
-                applicationName: appName,
-                applicationVersion: appVersion,
+                applicationName: info.appName,
+                applicationVersion: info.appVersion,
                 engineName: "sbylib",
                 engineVersion: VK_MAKE_VERSION(1,0,0),
                 apiVersion : VK_API_VERSION_1_0
             },
-            enabledLayerNames: layerSettings.use(),
+            enabledLayerNames: info.layerSettings.use(),
             enabledExtensionNames: GLFW.getRequiredInstanceExtensions() ~ ["VK_EXT_debug_report"]
         };
 
         enforce(instanceCreateInfo.enabledLayerNames.all!(n =>
                     LayerProperties.getAvailableInstanceLayerProperties().canFind!(l => l.layerName == n)));
 
-        this.instance = pushResource(new Instance(instanceCreateInfo));
+        auto instance = new Instance(instanceCreateInfo);
+
+        inst = new VDevice(instance, info.feature, window);
+    }
+
+    static void deinitialize() {
+        inst.destroyStack();
+    }
+
+    private static typeof(this) inst;
+
+    static typeof(this) opCall() {
+        return inst;
+    }
+
+    private this(Instance instance, VkPhysicalDeviceFeatures feature, Window window) {
+        this.instance = instance;
 
         auto surface = window.createSurface(instance);
         scope (exit)
@@ -54,22 +76,10 @@ static:
 
         this.gpu = instance.findPhysicalDevice!((PhysicalDevice gpu) => gpu.getSurfaceSupport(surface));
 
-        this.device = pushResource(createDevice(feature));
-        this.graphicsQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Graphics), 0)));
-        this.computeQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Compute), 0)));
+        this.device = createDevice(feature);
 
-        seal!(feature);
-    }
-
-    void deinitialize() {
-        destroyStack();
-    }
-
-    public VFence createFence(string name = null) {
-        Fence.CreateInfo fenceCreatInfo;
-        auto result = new Fence(device, fenceCreatInfo);
-        if (name) result.name = name;
-        return new VFence(result);
+        pushResource(instance);
+        pushResource(device);
     }
 
     public uint findQueueFamilyIndex(QueueFamilyProperties.Flags flags) {
@@ -95,6 +105,6 @@ static:
             enabledExtensionNames: ["VK_KHR_swapchain", "VK_EXT_debug_marker"],
             pEnabledFeatures: &features
         };
-        return new Device(VulkanContext.gpu, deviceCreateInfo);
+        return new Device(gpu, deviceCreateInfo);
     }
 }

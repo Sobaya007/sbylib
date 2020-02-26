@@ -126,7 +126,7 @@ class Material {
             }
             assert(window, "window is not registered.");
             auto r = instance[key] = new typeof(this)(window, prim);
-            VulkanContext.pushReleaseCallback({
+            VDevice().pushReleaseCallback({
                 r.destroy();
                 instance.remove(key);
             });
@@ -134,7 +134,7 @@ class Material {
         }
 
         this(Window window, PrimitiveTopology topology) {
-            auto device = VulkanContext.device;
+            auto device = VDevice();
 
             initializeDescriptor(device);
 
@@ -220,7 +220,7 @@ class Material {
             }
 
             void initializeDescriptorSet(DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
-                this.descriptorSet = createDescriptorSet(VulkanContext.device, descriptorPool, descriptorSetLayout);
+                this.descriptorSet = createDescriptorSet(VDevice(), descriptorPool, descriptorSetLayout);
             }
 
             void record(Geometry)(Geometry geom, CommandBuffer commandBuffer) {

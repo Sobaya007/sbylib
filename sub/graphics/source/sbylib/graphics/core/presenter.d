@@ -6,11 +6,9 @@ import sbylib.event;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.freeimage : FIImage = Image, FIImageType = ImageType;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.functions;
-import sbylib.graphics.wrapper.commandbuffer;
-import sbylib.graphics.wrapper.fence;
-import sbylib.graphics.wrapper.image;
+import sbylib.graphics.wrapper;
 
 class Presenter {
 
@@ -20,7 +18,7 @@ class Presenter {
         auto opCall(Window window) {
             if (window !in inst) {
                 auto r = inst[window] = new typeof(this)(window);
-                VulkanContext.pushReleaseCallback({
+                VDevice().pushReleaseCallback({
                     r.destroy();
                     inst.remove(window);
                 });
@@ -41,11 +39,11 @@ class Presenter {
     private VkFormat swapchainFormat;
 
     private this(Window window) {
-        with (VulkanContext) {
+        with (VDevice()) {
             this.win = window;
             this.surface = window.createSurface(instance);
             this.swapchain = createSwapchain(surface);
-            this.imageIndexAcquireFence = createFence("image index acquire fence");
+            this.imageIndexAcquireFence = VFence.create("image index acquire fence");
             this.presentFences = [imageIndexAcquireFence.fence];
             this.currentImageIndex = -1;
         }
@@ -75,7 +73,7 @@ class Presenter {
             swapchains: [swapchain],
             imageIndices: [currentImageIndex]
         };
-        VulkanContext.graphicsQueue.present(presentInfo);
+        VQueue(VQueue.Type.Graphics).present(presentInfo);
         imageIndexAcquireFence.reset();
         currentImageIndex = acquireNextImageIndex(imageIndexAcquireFence);
     }
@@ -93,7 +91,7 @@ class Presenter {
     }
 
     public void screenShot(string filename) {
-        with (VulkanContext) {
+        with (VDevice()) {
             auto width = win.width;
             auto height = win.height;
             auto dstFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -130,7 +128,7 @@ class Presenter {
             scope (exit) dstImage.destroy();
 
             // Do the actual blit from the swapchain image to our host visible destination image
-            auto copyCmd = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
+            auto copyCmd = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics);
             scope (exit) copyCmd.destroy();
 
             with (copyCmd(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
@@ -257,8 +255,10 @@ class Presenter {
                 cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.Transfer, 0, null, null, [barrier3]);
             }
 
-            VulkanContext.graphicsQueue.submit(copyCmd);
-            VulkanContext.graphicsQueue.waitIdle();
+            with (VQueue(VQueue.Type.Graphics)) {
+                submit(copyCmd);
+                waitIdle();
+            }
 
             // Get layout of the image (including row pitch)
             VkImageSubresource subResource = { 
@@ -285,7 +285,7 @@ class Presenter {
     private Swapchain createSwapchain(Surface surface) {
         import erupted : VK_FORMAT_B8G8R8A8_UNORM;
 
-        with (VulkanContext) {
+        with (VDevice()) {
             enforce(gpu.getSurfaceSupport(surface));
             const surfaceCapabilities = gpu.getSurfaceCapabilities(surface);
 

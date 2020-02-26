@@ -4,13 +4,9 @@ import std;
 import erupted;
 import sbylib.wrapper.freetype;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
-import sbylib.graphics.wrapper.buffer;
-import sbylib.graphics.wrapper.commandbuffer;
-import sbylib.graphics.wrapper.fence;
-import sbylib.graphics.wrapper.texture;
-import sbylib.graphics.wrapper.image;
+import sbylib.graphics.wrapper;
 
 class GlyphTexture : Texture {
 
@@ -36,15 +32,15 @@ class GlyphTexture : Texture {
 
         this._sampler = createSampler();
 
-        this.commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
+        this.commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics);
 
-        this.fence = VulkanContext.createFence("glyph texture fence");
+        this.fence = VFence.create("glyph texture fence");
 
         this.transition();
     }
 
     private VImage createImage(int width, int height) {
-        with (VulkanContext) {
+        with (VDevice()) {
             Image.CreateInfo imageInfo = {
                 imageType: ImageType.Type2D,
                 extent: {
@@ -78,7 +74,7 @@ class GlyphTexture : Texture {
                 layerCount: 1
             }
         };
-        return new ImageView(VulkanContext.device, imageViewInfo);
+        return new ImageView(VDevice(), imageViewInfo);
     }
 
     private Sampler createSampler() {
@@ -99,7 +95,7 @@ class GlyphTexture : Texture {
             minLod: 0.0f,
             maxLod: 0.0f
         };
-        return new Sampler(VulkanContext.device, samplerInfo);
+        return new Sampler(VDevice(), samplerInfo);
     }
 
     private void transition() {
@@ -120,7 +116,7 @@ class GlyphTexture : Texture {
             cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.BottomOfPipe, 0, [], [], [barrier]);
         }
 
-        VulkanContext.graphicsQueue.submitWithFence(commandBuffer, fence);
+        VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffer, fence);
         fence.wait();
         fence.reset();
     }
@@ -191,7 +187,7 @@ class GlyphTexture : Texture {
             cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.FragmentShader, 0, [], [], [barrier2]);
         }
 
-        VulkanContext.graphicsQueue.submit(commandBuffer);
+        VQueue(VQueue.Type.Graphics).submit(commandBuffer);
     }
 
     uint width() const {
@@ -297,7 +293,7 @@ class GlyphTexture : Texture {
                     [region], SamplerFilter.Nearest);
         }
 
-        VulkanContext.graphicsQueue.submitWithFence(commandBuffer, fence);
+        VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffer, fence);
         fence.wait();
         fence.reset();
     }

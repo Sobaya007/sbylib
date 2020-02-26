@@ -2,7 +2,7 @@ module sbylib.graphics.wrapper.buffer;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
 
 class VBuffer(T) {
@@ -27,14 +27,14 @@ class VBuffer(T) {
     this(size_t size, BufferUsage usage, MemoryProperties.MemoryType.Flags flag) {
         this.size = size;
 
-        with (VulkanContext) {
+        with (VDevice()) {
             Buffer.CreateInfo bufferInfo = {
                 usage: usage,
                 size: size,
                 sharingMode: SharingMode.Exclusive,
             };
             this._buffer = new Buffer(device, bufferInfo);
-            this._memory = _buffer.allocateMemory(VulkanContext.gpu, flag);
+            this._memory = _buffer.allocateMemory(gpu, flag);
     
             _memory.bindBuffer(_buffer, 0);
         }

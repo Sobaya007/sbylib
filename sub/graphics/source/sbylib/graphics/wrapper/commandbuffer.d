@@ -2,18 +2,23 @@ module sbylib.graphics.wrapper.commandbuffer;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
 import erupted : VkCommandBuffer;
 
 class VCommandBuffer {
 
-    private static CommandPool[QueueFamilyProperties.Flags] pools;
+    enum Type {
+        Graphics = QueueFamilyProperties.Flags.Graphics,
+        Compute = QueueFamilyProperties.Flags.Compute,
+    }
 
-    private static CommandPool pool(QueueFamilyProperties.Flags flags) {
-        if (auto p = flags in pools) return *p;
-        with (VulkanContext) {
-            auto queueFamilyIndex = findQueueFamilyIndex(flags);
+    private static CommandPool[Type] pools;
+
+    private static CommandPool pool(Type type) {
+        if (auto p = type in pools) return *p;
+        with (VDevice()) {
+            auto queueFamilyIndex = findQueueFamilyIndex(type);
             CommandPool.CreateInfo commandPoolCreateInfo = {
                 flags: CommandPool.CreateInfo.Flags.ResetCommandBuffer
                      | CommandPool.CreateInfo.Flags.Protected,
@@ -21,21 +26,21 @@ class VCommandBuffer {
             };
             auto pool = new CommandPool(device, commandPoolCreateInfo);
             pushResource(pool);
-            return pools[flags] = pool;
+            return pools[type] = pool;
         }
     }
 
-    static VCommandBuffer[] allocate(QueueFamilyProperties.Flags flags, CommandBufferLevel level, int count) {
+    static VCommandBuffer[] allocate(Type type, CommandBufferLevel level, int count) {
         CommandBuffer.AllocateInfo commandbufferAllocInfo = {
-            commandPool: pool(flags),
+            commandPool: pool(type),
             level: level,
             commandBufferCount: count,
         };
-        return CommandBuffer.allocate(VulkanContext.device, commandbufferAllocInfo).map!(c => new VCommandBuffer(c)).array;
+        return CommandBuffer.allocate(VDevice(), commandbufferAllocInfo).map!(c => new VCommandBuffer(c)).array;
     }
 
-    static VCommandBuffer allocate(QueueFamilyProperties.Flags flags, CommandBufferLevel level = CommandBufferLevel.Primary) {
-        return allocate(flags, level, 1)[0];
+    static VCommandBuffer allocate(Type type, CommandBufferLevel level = CommandBufferLevel.Primary) {
+        return allocate(type, level, 1)[0];
     }
 
     @own CommandBuffer commandBuffer;

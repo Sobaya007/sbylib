@@ -17,8 +17,12 @@ void entryPoint() {
     
     enforce(GLFW.hasVulkanSupport());
 
-    VulkanContext.initialize("example app", VK_MAKE_VERSION(0,0,1), window);
-    scope (exit) VulkanContext.deinitialize();
+    VDevice.CreateInfo deviceInfo = {
+        appName: "example app",
+        appVersion: VK_MAKE_VERSION(0,0,1)
+    };
+    VDevice.initialize(deviceInfo, window);
+    scope (exit) VDevice.deinitialize();
 
     when(KeyButton.Escape.pressed.on(window)).then({
         window.shouldClose = true;

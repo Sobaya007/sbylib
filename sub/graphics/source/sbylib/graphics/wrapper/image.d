@@ -2,7 +2,7 @@ module sbylib.graphics.wrapper.image;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
 
 class VImage {
@@ -16,7 +16,7 @@ class VImage {
 
     this(Image _image, MemoryProperties.MemoryType.Flags flag) {
         this._image = _image;
-        this._memory = _image.allocateMemory(VulkanContext.gpu, flag);
+        this._memory = _image.allocateMemory(VDevice().gpu, flag);
     
         _memory.bindImage(_image, 0);
     }

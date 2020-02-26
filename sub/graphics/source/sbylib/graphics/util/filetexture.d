@@ -4,12 +4,9 @@ import std;
 import erupted;
 import sbylib.wrapper.vulkan;
 import sbylib.wrapper.freeimage : FIImage = Image;
-import sbylib.graphics.core.vulkancontext;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
-import sbylib.graphics.wrapper.buffer;
-import sbylib.graphics.wrapper.commandbuffer;
-import sbylib.graphics.wrapper.texture;
-import sbylib.graphics.wrapper.image;
+import sbylib.graphics.wrapper;
 
 class FileTexture : Texture {
 
@@ -48,7 +45,7 @@ class FileTexture : Texture {
             size: size,
             sharingMode: SharingMode.Exclusive,
         };
-        return new Buffer(VulkanContext.device, bufferInfo);
+        return new Buffer(VDevice(), bufferInfo);
     }
 
     private Image createImage(int width, int height) {
@@ -68,7 +65,7 @@ class FileTexture : Texture {
             sharingMode: SharingMode.Exclusive,
             samples: SampleCount.Count1
         };
-        return new Image(VulkanContext.device, imageInfo);
+        return new Image(VDevice(), imageInfo);
     }
 
     private ImageView createImageView(Image image) {
@@ -90,7 +87,7 @@ class FileTexture : Texture {
                 a: ComponentSwizzle.A,
             }
         };
-        return new ImageView(VulkanContext.device, imageViewInfo);
+        return new ImageView(VDevice(), imageViewInfo);
     }
 
     private Sampler createSampler() {
@@ -111,11 +108,11 @@ class FileTexture : Texture {
             minLod: 0.0f,
             maxLod: 0.0f
         };
-        return new Sampler(VulkanContext.device, samplerInfo);
+        return new Sampler(VDevice(), samplerInfo);
     }
 
     private void transferData(Buffer src, Image dst) {
-        auto commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
+        auto commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics);
         scope (exit)
             commandBuffer.destroy();
 
@@ -174,7 +171,7 @@ class FileTexture : Texture {
         
         }
 
-        auto fence = VulkanContext.graphicsQueue.submitWithFence(commandBuffer);
+        auto fence = VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffer, "FileTexture.transferData");
         fence.wait();
         fence.destroy();
     }

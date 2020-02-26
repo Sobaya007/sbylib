@@ -5,9 +5,8 @@ import erupted;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.vulkan;
 import sbylib.graphics.core.presenter;
-import sbylib.graphics.core.vulkancontext;
-import sbylib.graphics.wrapper.commandbuffer;
-import sbylib.graphics.wrapper.fence;
+import sbylib.graphics.wrapper.device;
+import sbylib.graphics.wrapper;
 import sbylib.graphics.util.own;
 
 class StandardRenderPass : RenderPass {
@@ -39,7 +38,7 @@ class StandardRenderPass : RenderPass {
     static opCall(Window window) {
         if (window !in instance) {
             instance[window] = new typeof(this)(window);
-            VulkanContext.pushReleaseCallback({ StandardRenderPass.deinitialize(window); });
+            VDevice().pushReleaseCallback({ StandardRenderPass.deinitialize(window); });
         }
         return instance[window];
     }
@@ -81,7 +80,7 @@ class StandardRenderPass : RenderPass {
                 }]
             }]
         };
-        super(VulkanContext.device, renderPassCreateInfo);
+        super(VDevice(), renderPassCreateInfo);
 
         this.colorImageViews = Presenter(window).getSwapchainImages().map!(
                 im => createImageView(im, VK_FORMAT_B8G8R8A8_UNORM, ImageAspect.Color)).array;
@@ -89,15 +88,15 @@ class StandardRenderPass : RenderPass {
         this.depthImageMemory = createMemory(depthImage, ImageLayout.DepthStencilAttachmentOptimal, ImageAspect.Depth);
         this.depthImageView = createImageView(depthImage, VK_FORMAT_D32_SFLOAT, ImageAspect.Depth);
         this.framebuffers = colorImageViews.map!(iv => createFramebuffer(window, iv, depthImageView)).array;
-        this.commandBuffers = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics, CommandBufferLevel.Primary, cast(uint)framebuffers.length);
+        this.commandBuffers = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics, CommandBufferLevel.Primary, cast(uint)framebuffers.length);
         foreach (cb; this.commandBuffers)
             cb.name = "standard renderpass";
-        this.submitFence = VulkanContext.createFence("standard renderpass submission fence");
+        this.submitFence = VFence.create("standard renderpass submission fence");
         Presenter(window).pushPresentFence(submitFence);
 
         updateCommandBuffers();
 
-        VulkanContext.pushResource(this);
+        VDevice().pushResource(this);
     }
 
     private Image createImage(Window window, VkFormat format) {
@@ -117,12 +116,12 @@ class StandardRenderPass : RenderPass {
             sharingMode: SharingMode.Exclusive,
             samples: SampleCount.Count1
         };
-        auto result = new Image(VulkanContext.device, imageInfo);
+        auto result = new Image(VDevice(), imageInfo);
         return result;
     }
 
     private DeviceMemory createMemory(Image image, ImageLayout layout, ImageAspect aspect) {
-        with (VulkanContext) {
+        with (VDevice()) {
             auto result = image.allocateMemory(gpu, MemoryProperties.MemoryType.Flags.DeviceLocal);
             result.bindImage(image, 0);
             transitionImage(depthImage, ImageLayout.Undefined, layout, aspect);
@@ -143,7 +142,7 @@ class StandardRenderPass : RenderPass {
                layerCount: 1,
            }
         };
-        return new ImageView(VulkanContext.device, info);
+        return new ImageView(VDevice(), info);
     }
 
     private Framebuffer createFramebuffer(Window window, ImageView colorImage, ImageView depthImage) {
@@ -154,11 +153,11 @@ class StandardRenderPass : RenderPass {
             height: window.height,
             layers: 1,
         };
-        return new Framebuffer(VulkanContext.device, info);
+        return new Framebuffer(VDevice(), info);
     }
 
     private void transitionImage(Image image, ImageLayout oldLayout, ImageLayout newLayout, ImageAspect aspectMask) {
-        auto commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
+        auto commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics);
         scope (exit)
             commandBuffer.destroy();
 
@@ -181,7 +180,7 @@ class StandardRenderPass : RenderPass {
             cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.BottomOfPipe, 0, [], [], [barrier]);
         }
 
-        auto fence = VulkanContext.graphicsQueue.submitWithFence(commandBuffer);
+        auto fence = VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffer, "renderpass.transitionImage");
         fence.wait();
         fence.destroy();
     }
@@ -226,7 +225,7 @@ class StandardRenderPass : RenderPass {
         submitFence.reset();
         auto currentImageIndex = Presenter(window).getImageIndex();
 
-        VulkanContext.graphicsQueue.submitWithFence(commandBuffers[currentImageIndex], submitFence);
+        VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffers[currentImageIndex], submitFence);
         submitted = true;
     }
 

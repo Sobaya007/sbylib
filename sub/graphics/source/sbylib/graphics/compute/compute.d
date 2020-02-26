@@ -29,7 +29,7 @@ class Compute {
         mixin ImplDescriptor;
 
         this() {
-            auto device = VulkanContext.device;
+            auto device = VDevice();
 
             initializeDescriptor(device);
 
@@ -49,10 +49,10 @@ class Compute {
         private static typeof(this) inst;
 
         static Inst opCall(VQueue queue = null) {
-            if (queue is null) queue = VulkanContext.computeQueue;
+            if (queue is null) queue = VQueue(VQueue.Type.Compute);
             if (inst is null) {
                 inst = new typeof(this);
-                VulkanContext.pushResource(inst);
+                VDevice().pushResource(inst);
             }
             return Inst(queue, inst.pipeline, inst.pipelineLayout, inst.descriptorPool, inst.descriptorSetLayout);
         }
@@ -74,8 +74,8 @@ class Compute {
                 this.pipeline = pipeline;
                 this.pipelineLayout = pipelineLayout;
                 initializeDefinedBuffers();
-                this.descriptorSet = createDescriptorSet(VulkanContext.device, descriptorPool, descriptorSetLayout);
-                this.commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Compute);
+                this.descriptorSet = createDescriptorSet(VDevice(), descriptorPool, descriptorSetLayout);
+                this.commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Compute);
             }
 
             auto dispatch(int x, int y, int z) {
@@ -84,7 +84,7 @@ class Compute {
                     cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
                     cmdDispatch(x, y, z);
                 }
-                auto fence = queue.submitWithFence(commandBuffer);
+                auto fence = queue.submitWithFence(commandBuffer, "dispatch");
                 struct Job {
                     VFence fence;
 
