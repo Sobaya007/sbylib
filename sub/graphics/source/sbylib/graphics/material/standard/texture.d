@@ -1,8 +1,11 @@
 module sbylib.graphics.material.standard.texture;
 
 import sbylib.graphics.material.standard.material;
+import sbylib.graphics.material.standard.renderpass;
 
 class TextureMaterial : Material { 
+
+    mixin RenderPass!(StandardRenderPass);
 
     mixin ShaderSource!(ShaderStage.Vertex, q{
         #version 450

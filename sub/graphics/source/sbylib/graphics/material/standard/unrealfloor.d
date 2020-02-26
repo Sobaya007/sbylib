@@ -1,8 +1,11 @@
 module sbylib.graphics.material.standard.unrealfloor;
 
 import sbylib.graphics.material.standard.material;
+import sbylib.graphics.material.standard.renderpass;
 
 class UnrealFloorMaterial : Material {
+
+    mixin RenderPass!(StandardRenderPass);
 
     mixin ShaderSource!(ShaderStage.Vertex, q{
         #version 450

@@ -27,7 +27,7 @@ mixin template UseMaterial(MaterialType) {
         auto register = (CommandBuffer commandBuffer) {
             _data.record(geom, MaterialType.getInstance(window, geom.primitive), commandBuffer);
         };
-        this._reregister = () => StandardRenderPass(window).register(register);
+        this._reregister = () => MaterialType.RenderPassType(window).register(register);
         when(Frame).once({
             this._unregister = _reregister();
             _data.pushReleaseCallback(_unregister);
@@ -83,11 +83,14 @@ class Material {
         }
     }
 
+    mixin template RenderPass(RenderPassType_) {
+        alias RenderPassType = RenderPassType_;
+    }
+
     mixin template Instance() {
         import sbylib.graphics.core;
         import sbylib.graphics.util;
         import sbylib.graphics.wrapper;
-        import sbylib.graphics.material.standard.renderpass : StandardRenderPass;
         import sbylib.wrapper.glfw : Window;
         alias This = typeof(this);
 
@@ -147,7 +150,7 @@ class Material {
                 depthStencilState: depthStencilState,
                 colorBlendState: colorBlendState,
                 layout: pipelineLayout,
-                renderPass: StandardRenderPass(window),
+                renderPass: RenderPassType(window),
                 subpass: 0,
             };
 
