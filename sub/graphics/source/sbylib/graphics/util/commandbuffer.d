@@ -2,6 +2,7 @@ module sbylib.graphics.util.commandbuffer;
 
 import std;
 import sbylib.wrapper.vulkan;
+import sbylib.graphics.util.image;
 import sbylib.graphics.util.own;
 import sbylib.graphics.util.vulkancontext;
 import erupted : VkCommandBuffer;

@@ -9,7 +9,6 @@ import sbylib.graphics.util.commandbuffer;
 import sbylib.graphics.util.texture;
 import sbylib.graphics.util.image;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.rendercontext;
 import sbylib.graphics.util.vulkancontext;
 
 class FileTexture : Texture {

@@ -124,7 +124,7 @@ class Material {
             }
             assert(window, "window is not registered.");
             auto r = instance[key] = new typeof(this)(window, prim);
-            RenderContext(window).pushReleaseCallback({
+            VulkanContext.pushReleaseCallback({
                 r.destroy();
                 instance.remove(key);
             });

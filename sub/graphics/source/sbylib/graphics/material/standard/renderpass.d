@@ -6,7 +6,7 @@ import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.vulkan;
 import sbylib.graphics.util.commandbuffer;
 import sbylib.graphics.util.fence;
-import sbylib.graphics.util.rendercontext;
+import sbylib.graphics.util.presenter;
 import sbylib.graphics.util.own;
 import sbylib.graphics.util.vulkancontext;
 
@@ -38,10 +38,8 @@ class StandardRenderPass : RenderPass {
 
     static opCall(Window window) {
         if (window !in instance) {
-            with (RenderContext(window)) {
-                instance[window] = new typeof(this)(swapchain.getImages(), window);
-                RenderContext(window).pushReleaseCallback({ StandardRenderPass.deinitialize(window); });
-            }
+            instance[window] = new typeof(this)(window);
+            VulkanContext.pushReleaseCallback({ StandardRenderPass.deinitialize(window); });
         }
         return instance[window];
     }
@@ -52,7 +50,7 @@ class StandardRenderPass : RenderPass {
         instance.remove(window);
     }
 
-    private this(Image[] colorImages, Window window) {
+    private this(Window window) {
         this.window = window;
 
         RenderPass.CreateInfo renderPassCreateInfo = {
@@ -85,7 +83,7 @@ class StandardRenderPass : RenderPass {
         };
         super(VulkanContext.device, renderPassCreateInfo);
 
-        this.colorImageViews = colorImages.map!(
+        this.colorImageViews = Presenter(window).getSwapchainImages().map!(
                 im => createImageView(im, VK_FORMAT_B8G8R8A8_UNORM, ImageAspect.Color)).array;
         this.depthImage = createImage(window, VK_FORMAT_D32_SFLOAT);
         this.depthImageMemory = createMemory(depthImage, ImageLayout.DepthStencilAttachmentOptimal, ImageAspect.Depth);
@@ -95,7 +93,7 @@ class StandardRenderPass : RenderPass {
         foreach (cb; this.commandBuffers)
             cb.name = "standard renderpass";
         this.submitFence = VulkanContext.createFence("standard renderpass submission fence");
-        RenderContext(window).pushPresentFence(submitFence);
+        Presenter(window).pushPresentFence(submitFence);
 
         updateCommandBuffers();
 
@@ -178,11 +176,14 @@ class StandardRenderPass : RenderPass {
                     layerCount: 1
                 }
             };
-            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, [], [], [barrier]);
+            
+            // wait at bottom of pipe until before command's stage comes to top of pipe (does not wait at all)
+            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.BottomOfPipe, 0, [], [], [barrier]);
         }
 
-        VulkanContext.graphicsQueue.submit(commandBuffer);
-        VulkanContext.graphicsQueue.waitIdle();
+        auto fence = VulkanContext.graphicsQueue.submitWithFence(commandBuffer);
+        fence.wait();
+        fence.destroy();
     }
 
     private void updateCommandBuffers() {
@@ -223,7 +224,7 @@ class StandardRenderPass : RenderPass {
 
     void submitRender() {
         submitFence.reset();
-        auto currentImageIndex = RenderContext(window).getImageIndex();
+        auto currentImageIndex = Presenter(window).getImageIndex();
 
         VulkanContext.graphicsQueue.submitWithFence(commandBuffers[currentImageIndex], submitFence);
         submitted = true;

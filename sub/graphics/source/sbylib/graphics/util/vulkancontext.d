@@ -7,8 +7,6 @@ import sbylib.wrapper.glfw : Window, GLFW;
 import sbylib.graphics.layer;
 import sbylib.graphics.util.fence;
 import sbylib.graphics.util.queue;
-import sbylib.graphics.util.rendercontext;
-import sbylib.graphics.util.computecontext;
 import sbylib.graphics.util.functions;
 
 class VulkanContext {
@@ -59,9 +57,6 @@ static:
         this.device = pushResource(createDevice(feature));
         this.graphicsQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Graphics), 0)));
         this.computeQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Compute), 0)));
-
-        pushReleaseCallback({ RenderContext.deinitialize(); });
-        pushReleaseCallback({ ComputeContext.deinitialize(); });
 
         seal!(feature);
     }

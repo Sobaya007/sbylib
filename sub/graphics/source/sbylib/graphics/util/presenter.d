@@ -1,4 +1,4 @@
-module sbylib.graphics.util.rendercontext;
+module sbylib.graphics.util.presenter;
 
 import std;
 import erupted;
@@ -12,7 +12,7 @@ import sbylib.graphics.util.functions;
 import sbylib.graphics.util.image;
 import sbylib.graphics.util.vulkancontext;
 
-class RenderContext {
+class Presenter {
 
     static {
         private typeof(this)[Window] inst;
@@ -28,17 +28,11 @@ class RenderContext {
             }
             return inst[window];
         }
-
-        mixin ImplResourceStack;
-
-        package void deinitialize() {
-            destroyStack();
-        }
     }
 
-    Surface surface;
-    Swapchain swapchain;
-    ImageView[] imageViews;
+    private Surface surface;
+    private Swapchain swapchain;
+    private ImageView[] imageViews;
     private VFence imageIndexAcquireFence;
     private int currentImageIndex;
     private Fence[] presentFences;
@@ -56,7 +50,7 @@ class RenderContext {
             this.currentImageIndex = -1;
         }
         when(Frame(91)).then({
-            RenderContext(window).present();
+            present();
         });
     }
 
@@ -69,48 +63,8 @@ class RenderContext {
         this.imageIndexAcquireFence.destroy();
     }
 
-private:
-
-    Swapchain createSwapchain(Surface surface) {
-        import erupted : VK_FORMAT_B8G8R8A8_UNORM;
-
-        with (VulkanContext) {
-            enforce(gpu.getSurfaceSupport(surface));
-            const surfaceCapabilities = gpu.getSurfaceCapabilities(surface);
-
-            const surfaceFormats = gpu.getSurfaceFormats(surface);
-            const surfaceFormatCandidates = surfaceFormats.find!(f => f.format == VK_FORMAT_B8G8R8A8_UNORM);
-            enforce(surfaceFormatCandidates.empty is false, "Proper surface formats are not found.");
-            const surfaceFormat = surfaceFormatCandidates.front;
-            this.swapchainFormat = surfaceFormat.format;
-
-            Swapchain.CreateInfo swapchainCreateInfo = {
-                surface: surface,
-                minImageCount: surfaceCapabilities.minImageCount,
-                imageFormat: surfaceFormat.format,
-                imageColorSpace: surfaceFormat.colorSpace,
-                imageExtent: surfaceCapabilities.currentExtent,
-                imageArrayLayers: 1,
-                imageUsage: ImageUsage.ColorAttachment | ImageUsage.TransferSrc, // for screenshot
-                imageSharingMode: SharingMode.Exclusive,
-                compositeAlpha: CompositeAlpha.Opaque,
-                preTransform: SurfaceTransform.Identity,
-                presentMode: PresentMode.FIFO,
-                clipped: true,
-            };
-            enforce(surfaceCapabilities.supports(swapchainCreateInfo.imageUsage));
-            enforce(surfaceCapabilities.supports(swapchainCreateInfo.compositeAlpha));
-            enforce(surfaceCapabilities.supports(swapchainCreateInfo.preTransform));
-            enforce(gpu.getSurfacePresentModes(surface).canFind(swapchainCreateInfo.presentMode));
-
-            return pushResource(new Swapchain(device, swapchainCreateInfo));
-        }
-    }
-
-    public uint acquireNextImageIndex(Fence fence) 
-        in (swapchain !is null)
-    {
-        return swapchain.acquireNextImageIndex(ulong.max, null, fence);
+    public Image[] getSwapchainImages() {
+        return swapchain.getImages();
     }
 
     public void present() 
@@ -326,5 +280,45 @@ private:
             // Clean up resources
             dstImage.memory.unmap();
         }
+    }
+
+    private Swapchain createSwapchain(Surface surface) {
+        import erupted : VK_FORMAT_B8G8R8A8_UNORM;
+
+        with (VulkanContext) {
+            enforce(gpu.getSurfaceSupport(surface));
+            const surfaceCapabilities = gpu.getSurfaceCapabilities(surface);
+
+            const surfaceFormats = gpu.getSurfaceFormats(surface);
+            const surfaceFormatCandidates = surfaceFormats.find!(f => f.format == VK_FORMAT_B8G8R8A8_UNORM);
+            enforce(surfaceFormatCandidates.empty is false, "Proper surface formats are not found.");
+            const surfaceFormat = surfaceFormatCandidates.front;
+            this.swapchainFormat = surfaceFormat.format;
+
+            Swapchain.CreateInfo swapchainCreateInfo = {
+                surface: surface,
+                minImageCount: surfaceCapabilities.minImageCount,
+                imageFormat: surfaceFormat.format,
+                imageColorSpace: surfaceFormat.colorSpace,
+                imageExtent: surfaceCapabilities.currentExtent,
+                imageArrayLayers: 1,
+                imageUsage: ImageUsage.ColorAttachment | ImageUsage.TransferSrc, // for screenshot
+                imageSharingMode: SharingMode.Exclusive,
+                compositeAlpha: CompositeAlpha.Opaque,
+                preTransform: SurfaceTransform.Identity,
+                presentMode: PresentMode.FIFO,
+                clipped: true,
+            };
+            enforce(surfaceCapabilities.supports(swapchainCreateInfo.imageUsage));
+            enforce(surfaceCapabilities.supports(swapchainCreateInfo.compositeAlpha));
+            enforce(surfaceCapabilities.supports(swapchainCreateInfo.preTransform));
+            enforce(gpu.getSurfacePresentModes(surface).canFind(swapchainCreateInfo.presentMode));
+
+            return pushResource(new Swapchain(device, swapchainCreateInfo));
+        }
+    }
+
+    private uint acquireNextImageIndex(Fence fence) {
+        return swapchain.acquireNextImageIndex(ulong.max, null, fence);
     }
 }

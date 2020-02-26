@@ -50,7 +50,7 @@ class Compute {
             if (queue is null) queue = VulkanContext.computeQueue;
             if (inst is null) {
                 inst = new typeof(this);
-                ComputeContext.pushResource(inst);
+                VulkanContext.pushResource(inst);
             }
             return Inst(queue, inst.pipeline, inst.pipelineLayout, inst.descriptorPool, inst.descriptorSetLayout);
         }

@@ -3,7 +3,6 @@ module sbylib.graphics.util.image;
 import std;
 import sbylib.wrapper.vulkan;
 import sbylib.graphics.util.own;
-import sbylib.graphics.util.rendercontext;
 import sbylib.graphics.util.vulkancontext;
 
 class VImage {
