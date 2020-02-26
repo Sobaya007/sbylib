@@ -4,6 +4,8 @@ import std;
 import erupted;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.vulkan;
+import sbylib.graphics.util.commandbuffer;
+import sbylib.graphics.util.fence;
 import sbylib.graphics.util.rendercontext;
 import sbylib.graphics.util.own;
 import sbylib.graphics.util.vulkancontext;
@@ -17,12 +19,12 @@ class StandardRenderPass : RenderPass {
             ImageView[] colorImageViews;
             Image depthImage;
             DeviceMemory depthImageMemory;
-            Fence submitFence;
+            VFence submitFence;
         }
 
         public {
             Framebuffer[] framebuffers;
-            CommandBuffer[] commandBuffers;
+            VCommandBuffer[] commandBuffers;
             ImageView depthImageView;
         }
     }
@@ -89,7 +91,7 @@ class StandardRenderPass : RenderPass {
         this.depthImageMemory = createMemory(depthImage, ImageLayout.DepthStencilAttachmentOptimal, ImageAspect.Depth);
         this.depthImageView = createImageView(depthImage, VK_FORMAT_D32_SFLOAT, ImageAspect.Depth);
         this.framebuffers = colorImageViews.map!(iv => createFramebuffer(window, iv, depthImageView)).array;
-        this.commandBuffers = RenderContext.createCommandBuffer(CommandBufferLevel.Primary, cast(uint)framebuffers.length);
+        this.commandBuffers = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics, CommandBufferLevel.Primary, cast(uint)framebuffers.length);
         foreach (cb; this.commandBuffers)
             cb.name = "standard renderpass";
         this.submitFence = VulkanContext.createFence("standard renderpass submission fence");
@@ -158,21 +160,11 @@ class StandardRenderPass : RenderPass {
     }
 
     private void transitionImage(Image image, ImageLayout oldLayout, ImageLayout newLayout, ImageAspect aspectMask) {
-        with (RenderContext) {
-            CommandBuffer.AllocateInfo commandbufferAllocInfo = {
-                commandPool: commandPool,
-                level: CommandBufferLevel.Primary,
-                commandBufferCount: 1,
-            };
-            auto commandBuffer = CommandBuffer.allocate(VulkanContext.device, commandbufferAllocInfo)[0];
-            scope (exit)
-                commandBuffer.destroy();
+        auto commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
+        scope (exit)
+            commandBuffer.destroy();
 
-            CommandBuffer.BeginInfo beginInfo = {
-                flags: CommandBuffer.BeginInfo.Flags.OneTimeSubmit
-            };
-            commandBuffer.begin(beginInfo);
-
+        with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
             VkImageMemoryBarrier barrier = {
                 dstAccessMask: AccessFlags.TransferWrite,
                 oldLayout: oldLayout,
@@ -186,15 +178,11 @@ class StandardRenderPass : RenderPass {
                     layerCount: 1
                 }
             };
-            commandBuffer.cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, [barrier]);
-            commandBuffer.end();
-
-            Queue.SubmitInfo submitInfo = {
-                commandBuffers: [commandBuffer]
-            };
-            queue.submit([submitInfo], null);
-            queue.waitIdle();
+            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, [], [], [barrier]);
         }
+
+        VulkanContext.graphicsQueue.submit(commandBuffer);
+        VulkanContext.graphicsQueue.waitIdle();
     }
 
     private void updateCommandBuffers() {
@@ -204,47 +192,41 @@ class StandardRenderPass : RenderPass {
         }
         enforce(!submitted || submitFence.signaled);
 
-        foreach (commandBuffer, framebuffer; zip(commandBuffers, framebuffers)) {
-            CommandBuffer.BeginInfo beginInfo;
-            commandBuffer.begin(beginInfo);
-
-            CommandBuffer.RenderPassBeginInfo renderPassBeginInfo = {
-                renderPass: this,
-                framebuffer: framebuffer,
-                renderArea: { 
-                    extent: VkExtent2D(window.width, window.height) 
-                },
-                clearValues: [{
-                    color: {
-                        float32: [0.0f, 0.0f, 0.0f, 1.0f]
+        foreach (cb, framebuffer; zip(commandBuffers, framebuffers)) {
+            with (cb()) {
+                CommandBuffer.RenderPassBeginInfo renderPassBeginInfo = {
+                    renderPass: this,
+                    framebuffer: framebuffer,
+                    renderArea: { 
+                        extent: VkExtent2D(window.width, window.height) 
                     },
-                }, {
-                    depthStencil: {
-                        depth: 1.0f
-                    }
-                }]
-            };
-            commandBuffer.cmdBeginRenderPass(renderPassBeginInfo, SubpassContents.Inline);
+                    clearValues: [{
+                        color: {
+                            float32: [0.0f, 0.0f, 0.0f, 1.0f]
+                        },
+                    }, {
+                        depthStencil: {
+                            depth: 1.0f
+                        }
+                    }]
+                };
+                cmdBeginRenderPass(renderPassBeginInfo, SubpassContents.Inline);
 
-            this.renderList.each!(r => r(commandBuffer));
+                foreach (r; this.renderList) {
+                    r(commandBuffer);
+                }
 
-            commandBuffer.cmdEndRenderPass();
-
-            commandBuffer.end();
+                cmdEndRenderPass();
+            }
         }
     }
 
     void submitRender() {
-        Fence.reset([submitFence]);
-        with (RenderContext(window)) {
-            auto currentImageIndex = getImageIndex();
+        submitFence.reset();
+        auto currentImageIndex = RenderContext(window).getImageIndex();
 
-            Queue.SubmitInfo submitInfo = {
-                commandBuffers: [commandBuffers[currentImageIndex]]
-            };
-            queue.submit([submitInfo], submitFence);
-            submitted = true;
-        }
+        VulkanContext.graphicsQueue.submitWithFence(commandBuffers[currentImageIndex], submitFence);
+        submitted = true;
     }
 
     auto register(void delegate(CommandBuffer) render) {

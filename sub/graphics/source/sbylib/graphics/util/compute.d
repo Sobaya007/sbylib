@@ -46,8 +46,8 @@ class Compute {
 
         private static typeof(this) inst;
 
-        static Inst opCall(Queue queue = null) {
-            if (queue is null) queue = ComputeContext.queue;
+        static Inst opCall(VQueue queue = null) {
+            if (queue is null) queue = VulkanContext.computeQueue;
             if (inst is null) {
                 inst = new typeof(this);
                 ComputeContext.pushResource(inst);
@@ -61,46 +61,38 @@ class Compute {
 
             private @own {
                 DescriptorSet descriptorSet;
-                CommandBuffer commandBuffer;
+                VCommandBuffer commandBuffer;
             }
             private Pipeline pipeline;
             private PipelineLayout pipelineLayout;
-            private Queue queue;
+            private VQueue queue;
 
-            this(Queue queue, Pipeline pipeline, PipelineLayout pipelineLayout, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
+            this(VQueue queue, Pipeline pipeline, PipelineLayout pipelineLayout, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
                 this.queue = queue;
                 this.pipeline = pipeline;
                 this.pipelineLayout = pipelineLayout;
                 initializeDefinedBuffers();
                 this.descriptorSet = createDescriptorSet(VulkanContext.device, descriptorPool, descriptorSetLayout);
-                this.commandBuffer = ComputeContext.createCommandBuffer(CommandBufferLevel.Primary, 1)[0];
+                this.commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Compute);
             }
 
             auto dispatch(int x, int y, int z) {
-                with (commandBuffer) {
-                    CommandBuffer.BeginInfo beginInfo;
-                    begin(beginInfo);
+                with (commandBuffer()) {
                     cmdBindPipeline(PipelineBindPoint.Compute, pipeline);
                     cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
                     cmdDispatch(x, y, z);
-                    end();
                 }
-                Queue.SubmitInfo submitInfo = {
-                    commandBuffers: [commandBuffer]
-                };
-
-                auto fence = VulkanContext.createFence("fence for dispatch compute");
-                queue.submit([submitInfo], fence);
-
+                auto fence = queue.submitWithFence(commandBuffer);
                 struct Job {
-                    Fence fence;
+                    VFence fence;
 
                     ~this() {
+                        if (!fence.signaled) wait();
                         fence.destroy();
                     }
 
                     void wait() {
-                        Fence.wait([fence], true, ulong.max);
+                        fence.wait();
                     }
                 }
                 return Job(fence);

@@ -75,9 +75,9 @@ class Device {
         vkDestroyDevice(device, null);
     }
 
-    Queue getQueue(uint graphicsQueueFamilyIndex, uint queueIndex) {
+    Queue getQueue(uint queueFamilyIndex, uint queueIndex) {
         VkQueue queue;
-        vkGetDeviceQueue(device, graphicsQueueFamilyIndex, queueIndex, &queue);
+        vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, &queue);
         return new Queue(this, queue);
     }
 

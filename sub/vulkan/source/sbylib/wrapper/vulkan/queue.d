@@ -10,6 +10,11 @@ import sbylib.wrapper.vulkan.util;
 
 class Queue {
 
+    /*
+       1. Wait all `waitSemaphores` at each corresponding stage specified by `waitDstStageMask`
+       2. Execute `commandBuffers`
+       3. Signal all `signalSemaphores`
+     */
     static struct SubmitInfo {
         @vkProp("pWaitSemaphores", "waitSemaphoreCount") {
             const VkSemaphore[] waitSemaphores;
@@ -24,7 +29,7 @@ class Queue {
         }
 
         @vkProp("pSignalSemaphores", "signalSemaphoreCount") {
-            const VkSemaphore[] pSignalSemaphores;
+            const VkSemaphore[] signalSemaphores;
         }
 
         const mixin VkTo!(VkSubmitInfo);
@@ -82,14 +87,6 @@ class Queue {
     void present(PresentInfo _info) {
         auto info = _info.vkTo();
         enforceVK(vkQueuePresentKHR(queue, &info));
-    }
-
-    // utilities, not just a wrapper
-    void submit(CommandBuffer commandBuffer) {
-        SubmitInfo submitInfo = {
-            commandBuffers: [commandBuffer]
-        };
-        submit([submitInfo], null);
     }
 
     mixin VkTo!(VkQueue);

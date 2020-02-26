@@ -4,6 +4,9 @@ import std;
 import erupted;
 import sbylib.wrapper.vulkan;
 import sbylib.wrapper.glfw : Window, GLFW;
+import sbylib.graphics.layer;
+import sbylib.graphics.util.fence;
+import sbylib.graphics.util.queue;
 import sbylib.graphics.util.rendercontext;
 import sbylib.graphics.util.computecontext;
 import sbylib.graphics.util.functions;
@@ -13,16 +16,12 @@ static:
     Instance instance;
     PhysicalDevice gpu;
     Device device;
-    Queue queue;
-    CommandPool commandPool;
-
-    uint graphicsQueueFamilyIndex;
-    uint computeQueueFamilyIndex;
+    VQueue graphicsQueue, computeQueue;
 
     mixin ImplResourceStack;
 
     mixin Sealable!(VkPhysicalDeviceFeatures, "feature");
-    mixin Sealable!(string[], "layerNames");
+    LayerSettings layerSettings;
 
     void initialize(string appName, uint appVersion, Window window) {
         import erupted.vulkan_lib_loader : loadGlobalLevelFunctions;
@@ -30,10 +29,9 @@ static:
         const globalFunctionLoaded = loadGlobalLevelFunctions();
         assert(globalFunctionLoaded);
 
-        layerNames ~= [
-            "VK_LAYER_LUNARG_standard_validation",
-            "VK_LAYER_KHRONOS_validation",
-        ];
+        layerSettings.settings ~= new StandardValidationLayerSetting;
+        layerSettings.settings ~= new KhronosValidationLayerSetting;
+        pushReleaseCallback({ layerSettings.finalize(); });
 
         Instance.CreateInfo instanceCreateInfo = {
             applicationInfo: {
@@ -43,7 +41,7 @@ static:
                 engineVersion: VK_MAKE_VERSION(1,0,0),
                 apiVersion : VK_API_VERSION_1_0
             },
-            enabledLayerNames: layerNames,
+            enabledLayerNames: layerSettings.use(),
             enabledExtensionNames: GLFW.getRequiredInstanceExtensions() ~ ["VK_EXT_debug_report"]
         };
 
@@ -58,36 +56,34 @@ static:
 
         this.gpu = instance.findPhysicalDevice!((PhysicalDevice gpu) => gpu.getSurfaceSupport(surface));
 
-        this.graphicsQueueFamilyIndex = gpu.findQueueFamilyIndex!(prop =>
-                prop.supports(QueueFamilyProperties.Flags.Graphics));
-        this.computeQueueFamilyIndex = gpu.findQueueFamilyIndex!(prop =>
-                prop.supports(QueueFamilyProperties.Flags.Compute));
         this.device = pushResource(createDevice(feature));
-        this.queue = device.getQueue(graphicsQueueFamilyIndex, 0);
-        this.commandPool = pushResource(createCommandPool(graphicsQueueFamilyIndex));
+        this.graphicsQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Graphics), 0)));
+        this.computeQueue = pushResource(new VQueue(device.getQueue(findQueueFamilyIndex(QueueFamilyProperties.Flags.Compute), 0)));
 
-        RenderContext.initialize();
         pushReleaseCallback({ RenderContext.deinitialize(); });
-
-        ComputeContext.initialize();
         pushReleaseCallback({ ComputeContext.deinitialize(); });
 
         seal!(feature);
-        seal!(layerNames);
     }
 
     void deinitialize() {
         destroyStack();
     }
 
-    public Fence createFence(string name = null) {
+    public VFence createFence(string name = null) {
         Fence.CreateInfo fenceCreatInfo;
         auto result = new Fence(device, fenceCreatInfo);
         if (name) result.name = name;
-        return result;
+        return new VFence(result);
+    }
+
+    public uint findQueueFamilyIndex(QueueFamilyProperties.Flags flags) {
+        return gpu.findQueueFamilyIndex!(prop => prop.supports(flags));
     }
 
     private Device createDevice(VkPhysicalDeviceFeatures features) {
+        auto graphicsQueueFamilyIndex = findQueueFamilyIndex(QueueFamilyProperties.Flags.Graphics);
+        auto computeQueueFamilyIndex = findQueueFamilyIndex(QueueFamilyProperties.Flags.Compute);
         Device.QueueCreateInfo[] queueCreateInfos = [{
             queuePriorities: [0.0f],
             queueFamilyIndex: graphicsQueueFamilyIndex,
@@ -105,14 +101,5 @@ static:
             pEnabledFeatures: &features
         };
         return new Device(VulkanContext.gpu, deviceCreateInfo);
-    }
-
-    package CommandPool createCommandPool(uint queueFamilyIndex) {
-        CommandPool.CreateInfo commandPoolCreateInfo = {
-            flags: CommandPool.CreateInfo.Flags.ResetCommandBuffer
-                 | CommandPool.CreateInfo.Flags.Protected,
-            queueFamilyIndex: queueFamilyIndex
-        };
-        return new CommandPool(VulkanContext.device, commandPoolCreateInfo);
     }
 }

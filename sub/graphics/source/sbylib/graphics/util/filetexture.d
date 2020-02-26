@@ -5,6 +5,7 @@ import erupted;
 import sbylib.wrapper.vulkan;
 import sbylib.wrapper.freeimage : FIImage = Image;
 import sbylib.graphics.util.buffer;
+import sbylib.graphics.util.commandbuffer;
 import sbylib.graphics.util.texture;
 import sbylib.graphics.util.image;
 import sbylib.graphics.util.own;
@@ -115,78 +116,68 @@ class FileTexture : Texture {
     }
 
     private void transferData(Buffer src, Image dst) {
-        auto commandBuffer = RenderContext.createCommandBuffer(CommandBufferLevel.Primary, 1)[0];
+        auto commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
         scope (exit)
             commandBuffer.destroy();
 
-        CommandBuffer.BeginInfo beginInfo = {
-            flags: CommandBuffer.BeginInfo.Flags.OneTimeSubmit
-        };
-        commandBuffer.begin(beginInfo);
+        with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
+            VkImageMemoryBarrier barrier = {
+                dstAccessMask: AccessFlags.TransferWrite,
+                oldLayout: ImageLayout.Undefined,
+                newLayout: ImageLayout.TransferDstOptimal,
+                image: dst.image,
+                subresourceRange: {
+                    aspectMask: ImageAspect.Color,
+                    baseMipLevel: 0,
+                    levelCount: 1,
+                    baseArrayLayer: 0,
+                    layerCount: 1
+                }
+            };
+            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, [barrier]);
 
-        VkImageMemoryBarrier barrier = {
-            dstAccessMask: AccessFlags.TransferWrite,
-            oldLayout: ImageLayout.Undefined,
-            newLayout: ImageLayout.TransferDstOptimal,
-            image: dst.image,
-            subresourceRange: {
-                aspectMask: ImageAspect.Color,
-                baseMipLevel: 0,
-                levelCount: 1,
-                baseArrayLayer: 0,
-                layerCount: 1
-            }
-        };
-        commandBuffer.cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, [barrier]);
+            VkBufferImageCopy bufferImageCopy = {
+                bufferOffset: 0,
+                bufferRowLength: 0,
+                bufferImageHeight: 0,
+                imageSubresource: {
+                    aspectMask: ImageAspect.Color,
+                    mipLevel: 0,
+                    baseArrayLayer: 0,
+                    layerCount: 1,
+                },
+                imageOffset: {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                },
+                imageExtent: {
+                    width: width,
+                    height: height,
+                    depth: 1
+                }
+            };
+            cmdCopyBufferToImage(src, dst, ImageLayout.TransferDstOptimal, [bufferImageCopy]);
 
-        VkBufferImageCopy bufferImageCopy = {
-            bufferOffset: 0,
-            bufferRowLength: 0,
-            bufferImageHeight: 0,
-            imageSubresource: {
-                aspectMask: ImageAspect.Color,
-                mipLevel: 0,
-                baseArrayLayer: 0,
-                layerCount: 1,
-            },
-            imageOffset: {
-                x: 0,
-                y: 0,
-                z: 0,
-            },
-            imageExtent: {
-                width: width,
-                height: height,
-                depth: 1
-            }
-        };
-        commandBuffer.cmdCopyBufferToImage(src, dst, ImageLayout.TransferDstOptimal, [bufferImageCopy]);
-
-        VkImageMemoryBarrier barrier2 = {
-            oldLayout: ImageLayout.TransferDstOptimal,
-            newLayout: ImageLayout.ShaderReadOnlyOptimal,
-            image: dst.image,
-            subresourceRange: {
-                aspectMask: ImageAspect.Color,
-                baseMipLevel: 0,
-                levelCount: 1,
-                baseArrayLayer: 0,
-                layerCount: 1
-            }
-        };
-        commandBuffer.cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.FragmentShader, 0, null, null, [barrier2]);
+            VkImageMemoryBarrier barrier2 = {
+                oldLayout: ImageLayout.TransferDstOptimal,
+                newLayout: ImageLayout.ShaderReadOnlyOptimal,
+                image: dst.image,
+                subresourceRange: {
+                    aspectMask: ImageAspect.Color,
+                    baseMipLevel: 0,
+                    levelCount: 1,
+                    baseArrayLayer: 0,
+                    layerCount: 1
+                }
+            };
+            cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.FragmentShader, 0, null, null, [barrier2]);
         
-        commandBuffer.end();
+        }
 
-        auto fence = VulkanContext.createFence("file texture transfer fence");
-        scope (exit)
-            fence.destroy();
-
-        Queue.SubmitInfo submitInfo = {
-            commandBuffers: [commandBuffer]
-        };
-        RenderContext.queue.submit([submitInfo], fence);
-        Fence.wait([fence], true, ulong.max);
+        auto fence = VulkanContext.graphicsQueue.submitWithFence(commandBuffer);
+        fence.wait();
+        fence.destroy();
     }
 
     uint width() const {

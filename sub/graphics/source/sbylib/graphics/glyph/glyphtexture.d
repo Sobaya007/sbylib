@@ -5,6 +5,8 @@ import erupted;
 import sbylib.wrapper.freetype;
 import sbylib.wrapper.vulkan;
 import sbylib.graphics.util.buffer;
+import sbylib.graphics.util.commandbuffer;
+import sbylib.graphics.util.fence;
 import sbylib.graphics.util.texture;
 import sbylib.graphics.util.image;
 import sbylib.graphics.util.own;
@@ -18,8 +20,8 @@ class GlyphTexture : Texture {
             VImage image;
             ImageView _imageView;
             Sampler _sampler;
-            CommandBuffer commandBuffer;
-            Fence fence;
+            VCommandBuffer commandBuffer;
+            VFence fence;
         }
         uint _width, _height;
     }
@@ -35,7 +37,7 @@ class GlyphTexture : Texture {
 
         this._sampler = createSampler();
 
-        this.commandBuffer = RenderContext.createCommandBuffer(CommandBufferLevel.Primary, 1)[0];
+        this.commandBuffer = VCommandBuffer.allocate(QueueFamilyProperties.Flags.Graphics);
 
         this.fence = VulkanContext.createFence("glyph texture fence");
 
@@ -102,33 +104,25 @@ class GlyphTexture : Texture {
     }
 
     private void transition() {
-        CommandBuffer.BeginInfo beginInfo = {
-            flags: CommandBuffer.BeginInfo.Flags.OneTimeSubmit
-        };
-        commandBuffer.begin(beginInfo);
+        with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
+            VkImageMemoryBarrier barrier = {
+                oldLayout: ImageLayout.Undefined,
+                newLayout: ImageLayout.ShaderReadOnlyOptimal,
+                image: image.image.image,
+                subresourceRange: {
+                    aspectMask: ImageAspect.Color,
+                    baseMipLevel: 0,
+                    levelCount: 1,
+                    baseArrayLayer: 0,
+                    layerCount: 1
+                }
+            };
+            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.BottomOfPipe, 0, [], [], [barrier]);
+        }
 
-        VkImageMemoryBarrier barrier = {
-            oldLayout: ImageLayout.Undefined,
-            newLayout: ImageLayout.ShaderReadOnlyOptimal,
-            image: image.image.image,
-            subresourceRange: {
-                aspectMask: ImageAspect.Color,
-                baseMipLevel: 0,
-                levelCount: 1,
-                baseArrayLayer: 0,
-                layerCount: 1
-            }
-        };
-        commandBuffer.cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.FragmentShader, 0, null, null, [barrier]);
-        
-        commandBuffer.end();
-
-        Queue.SubmitInfo submitInfo = {
-            commandBuffers: [commandBuffer]
-        };
-        RenderContext.queue.submit([submitInfo], fence);
-        Fence.wait([fence], true, ulong.max);
-        Fence.reset([fence]);
+        VulkanContext.graphicsQueue.submitWithFence(commandBuffer, fence);
+        fence.wait();
+        fence.reset();
     }
 
     package void write(ubyte[] data, VkOffset3D offset, VkExtent3D extent) {
@@ -136,64 +130,55 @@ class GlyphTexture : Texture {
         scope (exit)
             stagingBuffer.destroy();
 
-        CommandBuffer.BeginInfo beginInfo = {
-            flags: CommandBuffer.BeginInfo.Flags.OneTimeSubmit
-        };
-        commandBuffer.begin(beginInfo);
+        with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
+            VkImageMemoryBarrier barrier = {
+                dstAccessMask: AccessFlags.TransferWrite,
+                oldLayout: ImageLayout.Undefined,
+                newLayout: ImageLayout.TransferDstOptimal,
+                image: image.image.image,
+                subresourceRange: {
+                    aspectMask: ImageAspect.Color,
+                    baseMipLevel: 0,
+                    levelCount: 1,
+                    baseArrayLayer: 0,
+                    layerCount: 1
+                }
+            };
+            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, [barrier]);
 
-        VkImageMemoryBarrier barrier = {
-            dstAccessMask: AccessFlags.TransferWrite,
-            oldLayout: ImageLayout.Undefined,
-            newLayout: ImageLayout.TransferDstOptimal,
-            image: image.image.image,
-            subresourceRange: {
-                aspectMask: ImageAspect.Color,
-                baseMipLevel: 0,
-                levelCount: 1,
-                baseArrayLayer: 0,
-                layerCount: 1
-            }
-        };
-        commandBuffer.cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, [barrier]);
+            VkBufferImageCopy bufferImageCopy = {
+                bufferOffset: 0,
+                bufferRowLength: 0,
+                bufferImageHeight: 0,
+                imageSubresource: {
+                    aspectMask: ImageAspect.Color,
+                    mipLevel: 0,
+                    baseArrayLayer: 0,
+                    layerCount: 1,
+                },
+                imageOffset: offset,
+                imageExtent: extent,
+            };
+            cmdCopyBufferToImage(stagingBuffer.buffer, image.image, ImageLayout.TransferDstOptimal, [bufferImageCopy]);
 
-        VkBufferImageCopy bufferImageCopy = {
-            bufferOffset: 0,
-            bufferRowLength: 0,
-            bufferImageHeight: 0,
-            imageSubresource: {
-                aspectMask: ImageAspect.Color,
-                mipLevel: 0,
-                baseArrayLayer: 0,
-                layerCount: 1,
-            },
-            imageOffset: offset,
-            imageExtent: extent,
-        };
-        commandBuffer.cmdCopyBufferToImage(stagingBuffer.buffer, image.image, ImageLayout.TransferDstOptimal, [bufferImageCopy]);
+            VkImageMemoryBarrier barrier2 = {
+                oldLayout: ImageLayout.TransferDstOptimal,
+                newLayout: ImageLayout.ShaderReadOnlyOptimal,
+                image: image.image.image,
+                subresourceRange: {
+                    aspectMask: ImageAspect.Color,
+                    baseMipLevel: 0,
+                    levelCount: 1,
+                    baseArrayLayer: 0,
+                    layerCount: 1
+                }
+            };
+            cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.FragmentShader, 0, null, null, [barrier2]);
+        }
 
-        VkImageMemoryBarrier barrier2 = {
-            oldLayout: ImageLayout.TransferDstOptimal,
-            newLayout: ImageLayout.ShaderReadOnlyOptimal,
-            image: image.image.image,
-            subresourceRange: {
-                aspectMask: ImageAspect.Color,
-                baseMipLevel: 0,
-                levelCount: 1,
-                baseArrayLayer: 0,
-                layerCount: 1
-            }
-        };
-        commandBuffer.cmdPipelineBarrier(PipelineStage.Transfer, PipelineStage.FragmentShader, 0, null, null, [barrier2]);
-        
-        commandBuffer.end();
-
-        Queue.SubmitInfo submitInfo = {
-            commandBuffers: [commandBuffer]
-        };
-        RenderContext.queue.submit([submitInfo], fence);
-
-        Fence.wait([fence], true, ulong.max);
-        Fence.reset([fence]);
+        VulkanContext.graphicsQueue.submitWithFence(commandBuffer, fence);
+        fence.wait();
+        fence.reset();
     }
 
     uint width() const {
@@ -234,84 +219,75 @@ class GlyphTexture : Texture {
 
     private void copy(VImage oldImage, VImage newImage, uint oldWidth, uint oldHeight) {
         with (RenderContext) {
-            CommandBuffer.BeginInfo beginInfo = {
-                flags: CommandBuffer.BeginInfo.Flags.OneTimeSubmit
-            };
-            commandBuffer.begin(beginInfo);
-
-            VkImageMemoryBarrier[2] barrier = [{
-                dstAccessMask: AccessFlags.TransferRead,
-                oldLayout: ImageLayout.Undefined,
-                newLayout: ImageLayout.TransferSrcOptimal,
-                image: oldImage.image.image,
-                subresourceRange: {
-                    aspectMask: ImageAspect.Color,
-                    baseMipLevel: 0,
-                    levelCount: 1,
-                    baseArrayLayer: 0,
-                    layerCount: 1
-                }
-            }, {
-                dstAccessMask: AccessFlags.TransferWrite,
-                oldLayout: ImageLayout.Undefined,
-                newLayout: ImageLayout.TransferDstOptimal,
-                image: newImage.image.image,
-                subresourceRange: {
-                    aspectMask: ImageAspect.Color,
-                    baseMipLevel: 0,
-                    levelCount: 1,
-                    baseArrayLayer: 0,
-                    layerCount: 1
-                }
-            }];
-            commandBuffer.cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, null, null, barrier);
-
-            VkImageBlit region = {
-                srcSubresource: {
-                    aspectMask: ImageAspect.Color,
-                    mipLevel: 0,
-                    baseArrayLayer: 0,
-                    layerCount: 1
-                },
-                srcOffsets: [{
-                    x: 0,
-                    y: 0,
-                    z: 0
+            with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
+                VkImageMemoryBarrier[2] barrier = [{
+                    dstAccessMask: AccessFlags.TransferRead,
+                    oldLayout: ImageLayout.Undefined,
+                    newLayout: ImageLayout.TransferSrcOptimal,
+                    image: oldImage.image.image,
+                    subresourceRange: {
+                        aspectMask: ImageAspect.Color,
+                        baseMipLevel: 0,
+                        levelCount: 1,
+                        baseArrayLayer: 0,
+                        layerCount: 1
+                    }
                 }, {
-                    x: oldWidth,
-                    y: oldHeight,
-                    z: 1
-                }],
-                dstSubresource: {
-                    aspectMask: ImageAspect.Color,
-                    mipLevel: 0,
-                    baseArrayLayer: 0,
-                    layerCount: 1
-                },
-                dstOffsets: [{
-                    x: 0,
-                    y: 0,
-                    z: 0
-                }, {
-                    x: oldWidth,
-                    y: oldHeight,
-                    z: 1
-                }],
-            };
-            commandBuffer.cmdBlitImage(
-                    oldImage.image, ImageLayout.TransferSrcOptimal,
-                    newImage.image, ImageLayout.TransferDstOptimal,
-                    [region], SamplerFilter.Nearest);
-            
-            commandBuffer.end();
+                    dstAccessMask: AccessFlags.TransferWrite,
+                    oldLayout: ImageLayout.Undefined,
+                    newLayout: ImageLayout.TransferDstOptimal,
+                    image: newImage.image.image,
+                    subresourceRange: {
+                        aspectMask: ImageAspect.Color,
+                        baseMipLevel: 0,
+                        levelCount: 1,
+                        baseArrayLayer: 0,
+                        layerCount: 1
+                    }
+                }];
+                cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.Transfer, 0, [], [], barrier);
 
-            Queue.SubmitInfo submitInfo = {
-                commandBuffers: [commandBuffer]
-            };
-            queue.submit([submitInfo], fence);
+                VkImageBlit region = {
+                    srcSubresource: {
+                        aspectMask: ImageAspect.Color,
+                        mipLevel: 0,
+                        baseArrayLayer: 0,
+                        layerCount: 1
+                    },
+                    srcOffsets: [{
+                        x: 0,
+                        y: 0,
+                        z: 0
+                    }, {
+                        x: oldWidth,
+                        y: oldHeight,
+                        z: 1
+                    }],
+                    dstSubresource: {
+                        aspectMask: ImageAspect.Color,
+                        mipLevel: 0,
+                        baseArrayLayer: 0,
+                        layerCount: 1
+                    },
+                    dstOffsets: [{
+                        x: 0,
+                        y: 0,
+                        z: 0
+                    }, {
+                        x: oldWidth,
+                        y: oldHeight,
+                        z: 1
+                    }],
+                };
+                cmdBlitImage(
+                        oldImage.image, ImageLayout.TransferSrcOptimal,
+                        newImage.image, ImageLayout.TransferDstOptimal,
+                        [region], SamplerFilter.Nearest);
+            }
 
-            Fence.wait([fence], true, ulong.max);
-            Fence.reset([fence]);
+            VulkanContext.graphicsQueue.submitWithFence(commandBuffer, fence);
+            fence.wait();
+            fence.reset();
         }
     }
 }
