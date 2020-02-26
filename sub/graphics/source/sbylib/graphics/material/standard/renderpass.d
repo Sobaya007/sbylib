@@ -19,9 +19,6 @@ class StandardRenderPass : RenderPass {
             Image depthImage;
             DeviceMemory depthImageMemory;
             VFence submitFence;
-        }
-
-        public {
             Framebuffer[] framebuffers;
             VCommandBuffer[] commandBuffers;
             ImageView depthImageView;

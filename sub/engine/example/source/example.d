@@ -19,7 +19,10 @@ void entryPoint() {
 
     VDevice.CreateInfo deviceInfo = {
         appName: "example app",
-        appVersion: VK_MAKE_VERSION(0,0,1)
+        appVersion: VK_MAKE_VERSION(0,0,1),
+        layerSettings: {
+            // settings: [new ApiDumpLayerSetting]
+        }
     };
     VDevice.initialize(deviceInfo, window);
     scope (exit) VDevice.deinitialize();

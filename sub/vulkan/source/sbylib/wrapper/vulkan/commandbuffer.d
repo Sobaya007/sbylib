@@ -211,6 +211,14 @@ class CommandBuffer {
         vkCmdExecuteCommands(commandBuffer, N, commandBuffers.ptr);
     }
 
+    void cmdExecuteCommands(CommandBuffer[] _commandBuffers) {
+        VkCommandBuffer[256] commandBuffers;
+        foreach (i; 0.._commandBuffers.length) {
+            commandBuffers[i] = _commandBuffers[i].vkTo();
+        }
+        vkCmdExecuteCommands(commandBuffer, cast(uint)_commandBuffers.length, commandBuffers.ptr);
+    }
+
     // utilities, not just a wrapper
 
     void begin(BeginInfo.Flags[] flags...) {

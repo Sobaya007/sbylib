@@ -1,10 +1,9 @@
 module sbylib.graphics.layer.setting;
 
 import std;
-import sbylib.graphics.util.functions;
 
 struct LayerSettings {
-    mixin Sealable!(LayerSetting[], "settings");
+    LayerSetting[] settings;
 
     enum fileName = "vk_layer_settings.txt";
 
@@ -15,7 +14,6 @@ struct LayerSettings {
     }
 
     string[] use() {
-        scope (exit) seal!settings;
         writeToFile();
         return getNames();
     }

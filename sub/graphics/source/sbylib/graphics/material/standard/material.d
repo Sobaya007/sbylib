@@ -23,9 +23,10 @@ mixin template UseMaterial(MaterialType) {
     }
 
     void constructor(Geometry, Args...)(Window window, Geometry geom, Args args) {
-        auto tmp = MaterialType(window).build(geom, args);
-        _data = tmp[0];
-        auto register = tmp[1];
+        _data = new MaterialType.DataSet(geom);
+        auto register = (CommandBuffer commandBuffer) {
+            _data.record(geom, MaterialType.getInstance(window, geom.primitive), commandBuffer);
+        };
         this._reregister = () => StandardRenderPass(window).register(register);
         when(Frame).once({
             this._unregister = _reregister();
@@ -93,31 +94,6 @@ class Material {
         mixin ImplDescriptor;
 
         private static typeof(this)[Tuple!(Window,PrimitiveTopology)] instance;
-
-        static opCall(Window window) {
-            return Builder(window);
-        }
-
-        struct Builder {
-            Window window;
-
-            public auto build(Geometry)(Geometry geom) {
-                with (getInstance(window, geom.primitive)) {
-                    auto result = new DataSet(geom);
-                    auto register = (CommandBuffer commandBuffer) {
-                        with (result) {
-                            if (!descriptorSet) initializeDescriptorSet(descriptorPool, descriptorSetLayout);
-                            commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, pipeline);
-                            commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, [descriptorSet]);
-                            commandBuffer.cmdBindVertexBuffers(0, [vertexBuffer.buffer], [0]);
-
-                            record(geom, commandBuffer);
-                        }
-                    };
-                    return tuple(result, register);
-                }
-            }
-        }
 
         static typeof(this) getInstance(Window window, PrimitiveTopology prim) {
             auto key = tuple(window,prim);
@@ -194,7 +170,7 @@ class Material {
             alias Vertex = getSymbolsByUDA!(This, vertex)[0];
             alias Index = uint;
 
-            private @own {
+            public @own {
                 VBuffer!Vertex vertexBuffer;
                 VBuffer!Index indexBuffer;
                 DescriptorSet descriptorSet;
@@ -221,32 +197,31 @@ class Material {
                 this.descriptorSet = createDescriptorSet(descriptorPool, descriptorSetLayout);
             }
 
-            void record(Geometry)(Geometry geom, CommandBuffer commandBuffer) {
+            void record(Geometry)(Geometry geom, Material inst, CommandBuffer commandBuffer) {
+                if (!descriptorSet) initializeDescriptorSet(inst.descriptorPool, inst.descriptorSetLayout);
+                commandBuffer.cmdBindPipeline(PipelineBindPoint.Graphics, inst.pipeline);
+                commandBuffer.cmdBindDescriptorSets(PipelineBindPoint.Graphics, inst.pipelineLayout, 0, [descriptorSet]);
+                commandBuffer.cmdBindVertexBuffers(0, [vertexBuffer.buffer], [0]);
+
                 bool indexBound = false;
                 static if (Geometry.hasIndex) {
                     assert(this.indexBuffer);
-                    if (this.indexBuffer) {
-                        cmdBindIndexBuffer(commandBuffer);
-                        commandBuffer.cmdDrawIndexed(cast(uint)geom.indexList.length, 1, 0, 0, 0);
-                        indexBound = true;
-                    }
-                }
-                if (!indexBound) {
+                    commandBuffer.cmdBindIndexBuffer(indexBuffer.buffer, 0, indexType);
+                    commandBuffer.cmdDrawIndexed(cast(uint)geom.indexList.length, 1, 0, 0, 0);
+                    indexBound = true;
+                } else {
                     commandBuffer.cmdDraw(cast(uint)geom.vertexList.length, 1, 0, 0);
                 }
             }
 
-            private void cmdBindIndexBuffer(CommandBuffer commandBuffer) {
-                static if (is(Index == ubyte)) {
-                    enum indexType = IndexType.Uint8;
-                } else static if (is(Index == ushort)) {
-                    enum indexType = IndexType.Uint16;
-                } else static if (is(Index == uint)) {
-                    enum indexType = IndexType.Uint32;
-                } else {
-                    static assert(false, "Invalid index type: " ~ Index.stringof);
-                }
-                commandBuffer.cmdBindIndexBuffer(indexBuffer.buffer, 0, indexType);
+            static if (is(Index == ubyte)) {
+                enum indexType = IndexType.Uint8;
+            } else static if (is(Index == ushort)) {
+                enum indexType = IndexType.Uint16;
+            } else static if (is(Index == uint)) {
+                enum indexType = IndexType.Uint32;
+            } else {
+                static assert(false, "Invalid index type: " ~ Index.stringof);
             }
         }
     }
