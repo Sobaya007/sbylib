@@ -35,30 +35,26 @@ class GlyphTexture : Texture {
         this.commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Graphics);
 
         this.fence = VFence.create("glyph texture fence");
-
-        this.transition();
     }
 
     private VImage createImage(int width, int height) {
-        with (VDevice()) {
-            Image.CreateInfo imageInfo = {
-                imageType: ImageType.Type2D,
-                extent: {
-                    width: width,
-                    height: height,
-                    depth: 1
-                },
-                mipLevels: 1,
-                arrayLayers: 1,
-                format: VK_FORMAT_R8_UNORM,
-                tiling: ImageTiling.Optimal,
-                initialLayout: ImageLayout.Undefined,
-                usage: ImageUsage.TransferSrc | ImageUsage.TransferDst | ImageUsage.Sampled,
-                sharingMode: SharingMode.Exclusive,
-                samples: SampleCount.Count1
-            };
-            return new VImage(new Image(device, imageInfo), MemoryProperties.MemoryType.Flags.DeviceLocal);
-        }
+        Image.CreateInfo imageInfo = {
+            imageType: ImageType.Type2D,
+            extent: {
+                width: width,
+                height: height,
+                depth: 1
+            },
+            mipLevels: 1,
+            arrayLayers: 1,
+            format: VK_FORMAT_R8_UNORM,
+            tiling: ImageTiling.Optimal,
+            initialLayout: ImageLayout.ShaderReadOnlyOptimal,
+            usage: ImageUsage.TransferSrc | ImageUsage.TransferDst | ImageUsage.Sampled,
+            sharingMode: SharingMode.Exclusive,
+            samples: SampleCount.Count1
+        };
+        return new VImage(new Image(VDevice(), imageInfo), MemoryProperties.MemoryType.Flags.DeviceLocal);
     }
 
     private ImageView createImageView(VImage image) {
@@ -96,29 +92,6 @@ class GlyphTexture : Texture {
             maxLod: 0.0f
         };
         return new Sampler(VDevice(), samplerInfo);
-    }
-
-    private void transition() {
-        with (commandBuffer(CommandBuffer.BeginInfo.Flags.OneTimeSubmit)) {
-            VkImageMemoryBarrier barrier = {
-                oldLayout: ImageLayout.Undefined,
-                newLayout: ImageLayout.ShaderReadOnlyOptimal,
-                image: image.image.image,
-                subresourceRange: {
-                    aspectMask: ImageAspect.Color,
-                    baseMipLevel: 0,
-                    levelCount: 1,
-                    baseArrayLayer: 0,
-                    layerCount: 1
-                }
-            };
-            // wait at bottom of pipe until before command's stage comes to top of pipe (does not wait at all)
-            cmdPipelineBarrier(PipelineStage.TopOfPipe, PipelineStage.BottomOfPipe, 0, [], [], [barrier]);
-        }
-
-        VQueue(VQueue.Type.Graphics).submitWithFence(commandBuffer, fence);
-        fence.wait();
-        fence.reset();
     }
 
     package void write(ubyte[] data, VkOffset3D offset, VkExtent3D extent) {

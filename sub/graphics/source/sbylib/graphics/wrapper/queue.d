@@ -2,8 +2,8 @@ module sbylib.graphics.wrapper.queue;
 
 import std;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.own;
+import sbylib.graphics.wrapper.device;
 import sbylib.graphics.wrapper.fence;
 
 class VQueue {

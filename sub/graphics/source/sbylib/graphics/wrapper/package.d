@@ -7,4 +7,5 @@ import sbylib.graphics.wrapper.device;
 import sbylib.graphics.wrapper.fence;
 import sbylib.graphics.wrapper.image;
 import sbylib.graphics.wrapper.queue;
+import sbylib.graphics.wrapper.renderpass;
 import sbylib.graphics.wrapper.texture;
