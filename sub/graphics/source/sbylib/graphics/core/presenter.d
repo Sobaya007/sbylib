@@ -75,7 +75,7 @@ class Presenter {
         };
         VQueue(VQueue.Type.Graphics).present(presentInfo);
         imageIndexAcquireFence.reset();
-        currentImageIndex = acquireNextImageIndex(imageIndexAcquireFence);
+        currentImageIndex = acquireNextImageIndex();
     }
 
     public void pushPresentFence(Fence fence) {
@@ -85,7 +85,7 @@ class Presenter {
     public int getImageIndex() {
         if (currentImageIndex == -1) {
             imageIndexAcquireFence.reset();
-            return currentImageIndex = acquireNextImageIndex(imageIndexAcquireFence);
+            return currentImageIndex = acquireNextImageIndex();
         }
         return currentImageIndex;
     }
@@ -318,7 +318,7 @@ class Presenter {
         }
     }
 
-    private uint acquireNextImageIndex(Fence fence) {
-        return swapchain.acquireNextImageIndex(ulong.max, null, fence);
+    private uint acquireNextImageIndex() {
+        return swapchain.acquireNextImageIndex(ulong.max, null, imageIndexAcquireFence);
     }
 }

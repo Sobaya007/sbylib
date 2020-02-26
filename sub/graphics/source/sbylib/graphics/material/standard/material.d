@@ -134,14 +134,12 @@ class Material {
         }
 
         this(Window window, PrimitiveTopology topology) {
-            auto device = VDevice();
-
-            initializeDescriptor(device);
+            initializeDescriptor();
 
             PipelineLayout.CreateInfo pipelineLayoutCreateInfo = {
                 setLayouts: [descriptorSetLayout]
             };
-            this.pipelineLayout = new PipelineLayout(device, pipelineLayoutCreateInfo);
+            this.pipelineLayout = new PipelineLayout(VDevice(), pipelineLayoutCreateInfo);
 
             Pipeline.GraphicsCreateInfo pipelineCreateInfo = {
                 vertexInputState: vertexInputState!(This),
@@ -178,10 +176,10 @@ class Material {
             };
 
             static foreach (f; getSymbolsByUDA!(typeof(this), stages)) {
-                pipelineCreateInfo.stages ~= f(device);
+                pipelineCreateInfo.stages ~= f();
             }
             assert(pipelineCreateInfo.stages.length > 0);
-            this.pipeline = Pipeline.create(device, [pipelineCreateInfo])[0];
+            this.pipeline = Pipeline.create(VDevice(), [pipelineCreateInfo])[0];
         }
 
         static class DataSet {
@@ -220,7 +218,7 @@ class Material {
             }
 
             void initializeDescriptorSet(DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
-                this.descriptorSet = createDescriptorSet(VDevice(), descriptorPool, descriptorSetLayout);
+                this.descriptorSet = createDescriptorSet(descriptorPool, descriptorSetLayout);
             }
 
             void record(Geometry)(Geometry geom, CommandBuffer commandBuffer) {

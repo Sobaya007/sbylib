@@ -29,21 +29,19 @@ class Compute {
         mixin ImplDescriptor;
 
         this() {
-            auto device = VDevice();
-
-            initializeDescriptor(device);
+            initializeDescriptor();
 
             PipelineLayout.CreateInfo pipelineLayoutCreateInfo = {
                 setLayouts: [descriptorSetLayout]
             };
-            this.pipelineLayout = new PipelineLayout(device, pipelineLayoutCreateInfo);
+            this.pipelineLayout = new PipelineLayout(VDevice(), pipelineLayoutCreateInfo);
 
             Pipeline.ComputeCreateInfo pipelineCreateInfo = {
-                stage: getSymbolsByUDA!(typeof(this), stages)[0](device),
+                stage: getSymbolsByUDA!(typeof(this), stages)[0](),
                 layout: pipelineLayout,
             };
 
-            this.pipeline = Pipeline.create(device, [pipelineCreateInfo])[0];
+            this.pipeline = Pipeline.create(VDevice(), [pipelineCreateInfo])[0];
         }
 
         private static typeof(this) inst;
@@ -74,7 +72,7 @@ class Compute {
                 this.pipeline = pipeline;
                 this.pipelineLayout = pipelineLayout;
                 initializeDefinedBuffers();
-                this.descriptorSet = createDescriptorSet(VDevice(), descriptorPool, descriptorSetLayout);
+                this.descriptorSet = createDescriptorSet(descriptorPool, descriptorSetLayout);
                 this.commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Compute);
             }
 

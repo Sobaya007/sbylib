@@ -19,8 +19,8 @@ mixin template Descriptor() {
         import sbylib.graphics.core.shader : ShaderUtil;
 
         mixin(q{
-            private @stages Pipeline.ShaderStageCreateInfo createShaderModule${stage}(Device device) {
-                auto mod = ShaderUtil.createModule(device, stage, code);
+            private @stages Pipeline.ShaderStageCreateInfo createShaderModule${stage}() {
+                auto mod = ShaderUtil.createModule(stage, code);
                 shaderModules ~= mod;
 
                 Pipeline.ShaderStageCreateInfo result = {
@@ -83,18 +83,18 @@ mixin template ImplDescriptor() {
             }
         }
 
-        public DescriptorSet createDescriptorSet(Device device, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
-            auto result = allocateDescriptorSet(device, descriptorPool, descriptorSetLayout);
+        public DescriptorSet createDescriptorSet(DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
+            auto result = allocateDescriptorSet(descriptorPool, descriptorSetLayout);
             writeDescriptor(result);
             return result;
         }
 
-        private DescriptorSet allocateDescriptorSet(Device device, DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
+        private DescriptorSet allocateDescriptorSet(DescriptorPool descriptorPool, DescriptorSetLayout descriptorSetLayout) {
             DescriptorSet.AllocateInfo descriptorSetAllocInfo = {
                 descriptorPool: descriptorPool,
                 setLayouts: [descriptorSetLayout]
             };
-            return DescriptorSet.allocate(device, descriptorSetAllocInfo)[0];
+            return DescriptorSet.allocate(VDevice(), descriptorSetAllocInfo)[0];
         }
 
         private void writeDescriptor(DescriptorSet descriptorSet) {
@@ -148,12 +148,12 @@ mixin template ImplDescriptor() {
        Implementation
      */
 
-    private void initializeDescriptor(Device device) {
-        this.descriptorSetLayout = createDescriptorSetLayout(device);
-        this.descriptorPool = createDescriptorPool(device);
+    private void initializeDescriptor() {
+        this.descriptorSetLayout = createDescriptorSetLayout();
+        this.descriptorPool = createDescriptorPool();
     }
 
-    private DescriptorSetLayout createDescriptorSetLayout(Device device) {
+    private DescriptorSetLayout createDescriptorSetLayout() {
         import sbylib.graphics.util.member : getMembers;
 
         DescriptorSetLayout.CreateInfo createInfo;
@@ -174,10 +174,10 @@ mixin template ImplDescriptor() {
             }
         }
 
-        return new DescriptorSetLayout(device, createInfo);
+        return new DescriptorSetLayout(VDevice(), createInfo);
     }
 
-    private DescriptorPool createDescriptorPool(Device device) {
+    private DescriptorPool createDescriptorPool() {
         import sbylib.graphics.util.member : getMembersByUDA;
 
         int[DescriptorType] counts;
@@ -195,6 +195,6 @@ mixin template ImplDescriptor() {
             createInfo.poolSizes ~= size;
         }
         assert(createInfo.poolSizes.length > 0);
-        return new DescriptorPool(device, createInfo);
+        return new DescriptorPool(VDevice(), createInfo);
     }
 }

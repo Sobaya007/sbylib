@@ -2,11 +2,12 @@ module sbylib.graphics.core.shader;
 
 import std;
 import sbylib.wrapper.vulkan;
+import sbylib.graphics.wrapper.device;
 
 class ShaderUtil {
 static:
 
-    ShaderModule createModule(Device device, ShaderStage stage, string code) {
+    ShaderModule createModule(ShaderStage stage, string code) {
         import std.file : write, remove, read;
 
         const sourceFileName = tempDir.buildPath("test." ~ getStageName(stage));
@@ -23,7 +24,7 @@ static:
         ShaderModule.CreateInfo shaderCreateInfo = {
             code: cast(ubyte[])read(spvFileName)
         };
-        return new ShaderModule(device, shaderCreateInfo);
+        return new ShaderModule(VDevice(), shaderCreateInfo);
     }
 
     private string getStageName(ShaderStage stage) {
