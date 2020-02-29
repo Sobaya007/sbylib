@@ -12,7 +12,7 @@ import sbylib.graphics.wrapper.queue;
 class VDevice {
 
     struct CreateInfo {
-        VkPhysicalDeviceFeatures feature;
+        VkPhysicalDeviceFeatures features;
         LayerSettings layerSettings;
         string appName;
         uint appVersion;
@@ -54,7 +54,7 @@ class VDevice {
 
         auto instance = new Instance(instanceCreateInfo);
 
-        inst = new VDevice(instance, info.feature, window);
+        inst = new VDevice(instance, info.features, window);
     }
 
     static void deinitialize() {

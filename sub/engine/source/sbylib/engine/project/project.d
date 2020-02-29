@@ -1,6 +1,7 @@
 module sbylib.engine.project.project;
 
 import std;
+import std : replace; // TODO: is this a compilier's bug???
 import sbylib.event;
 import sbylib.engine.project.metainfo;
 import sbylib.engine.project.moduleunit;

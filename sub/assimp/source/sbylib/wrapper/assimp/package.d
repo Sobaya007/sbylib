@@ -22,3 +22,4 @@ import sbylib.wrapper.assimp.scene;
 import sbylib.wrapper.assimp.texture;
 import sbylib.wrapper.assimp.vectorkey;
 import sbylib.wrapper.assimp.vertexweight;
+import sbylib.math;

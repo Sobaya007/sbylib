@@ -44,7 +44,7 @@ class TestCompute : Compute {
         Data[256] data;
     }
 
-    @storageBuffer @stage(ShaderStage.Compute) {
+    @storage @stage(ShaderStage.Compute) {
         @binding(0) Input input;
         @binding(1) Output output;
     }

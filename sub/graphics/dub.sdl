@@ -8,7 +8,6 @@ targetType "library"
 targetPath "lib"
 
 dependency "sbylib:assimp" path="../assimp"
-dependency "sbylib:engine" path="../engine"
 dependency "sbylib:event" path="../event"
 dependency "sbylib:glfw" path="../glfw"
 dependency "sbylib:ft" path="../ft"

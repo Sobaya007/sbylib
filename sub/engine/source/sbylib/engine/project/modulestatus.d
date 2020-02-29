@@ -47,10 +47,10 @@ class ModuleStatusList {
         foreach (key, value; status.byKeyValue.array.sort!((a,b) => a.key < b.key).map!(p => tuple(p.key, p.value)).assocArray) {
             writefln("%30s : %20s", key, colorize(value));
             if (value == ModuleStatus.CompileError) {
-                writeln(msg[key].magenda);
+                writeln(msg[key].red);
             }
             if (value == ModuleStatus.RuntimeError) {
-                writeln(msg[key].magenda);
+                writeln(msg[key].red);
             }
         }
     }

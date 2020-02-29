@@ -1,6 +1,7 @@
 module sbylib;
 
 public:
+import sbylib.collision;
 import sbylib.engine;
 import sbylib.event;
 import sbylib.graphics;

@@ -11,7 +11,7 @@ mixin template Descriptor() {
     struct type { DescriptorType type; }
     enum uniform = type(DescriptorType.UniformBuffer);
     enum texture = type(DescriptorType.CombinedImageSampler);
-    enum storageBuffer = type(DescriptorType.StorageBuffer);
+    enum storage = type(DescriptorType.StorageBuffer);
 
     mixin template ShaderSource(ShaderStage stage, string code) {
         import std : to;

@@ -10,3 +10,5 @@ import sbylib.event.finishevent;
 import sbylib.event.keyevent;
 import sbylib.event.mouseevent;
 import sbylib.event.timeevent;
+import sbylib.math;
+import sbylib.wrapper.glfw;

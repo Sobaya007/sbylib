@@ -59,6 +59,8 @@ class Pipeline {
         const mixin VkTo!(VkPipelineInputAssemblyStateCreateInfo);
     }
 
+    alias TessellationStateCreateInfo = VkPipelineTessellationStateCreateInfo;
+
     static struct RasterizationStateCreateInfo {
         @vkProp() {
             VkPipelineRasterizationStateCreateFlags flags;
@@ -90,6 +92,7 @@ class Pipeline {
 
         const mixin VkTo!(VkPipelineMultisampleStateCreateInfo);
     }
+
     alias DepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo;
 
     static struct ViewportStateCreateInfo {

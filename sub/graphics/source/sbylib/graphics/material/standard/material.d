@@ -12,17 +12,19 @@ import sbylib.graphics.core.shader;
 import sbylib.graphics.util.own;
 
 mixin template UseMaterial(MaterialType) {
+    import sbylib.event;
+
     alias DataType = MaterialType.DataSet;
     DataType _data;
     alias _data this;
     private void delegate() delegate() _reregister;
     private void delegate() _unregister;
 
-    this(Geometry, Args...)(Window window, Geometry geom, Args args) {
-        constructor(window, geom, args);
+    this(Geometry)(Window window, Geometry geom) {
+        constructor(window, geom);
     }
 
-    void constructor(Geometry, Args...)(Window window, Geometry geom, Args args) {
+    void constructor(Geometry)(Window window, Geometry geom) {
         _data = new MaterialType.DataSet(geom);
         auto register = (CommandBuffer commandBuffer) {
             _data.record(geom, MaterialType.getInstance(window, geom.primitive), commandBuffer);
@@ -59,27 +61,17 @@ class Material {
 
     mixin ImplReleaseOwn;
 
-    mixin template Rasterization(Pipeline.RasterizationStateCreateInfo rs) {
-        private Pipeline.RasterizationStateCreateInfo rasterizationState () {
-            return rs;
-        }
+    struct CreateInfo {
+        Pipeline.RasterizationStateCreateInfo rasterization;
+        Pipeline.TessellationStateCreateInfo tessellation;
+        Pipeline.MultisampleStateCreateInfo multisample;
+        Pipeline.DepthStencilStateCreateInfo depthStencil;
+        Pipeline.ColorBlendStateCreateInfo colorBlend;
     }
 
-    mixin template Multisample(Pipeline.MultisampleStateCreateInfo ms) {
-        private Pipeline.MultisampleStateCreateInfo multisampleState () {
-            return ms;
-        }
-    }
-
-    mixin template DepthStencil(Pipeline.DepthStencilStateCreateInfo ds) {
-        private Pipeline.DepthStencilStateCreateInfo depthStencilState () {
-            return ds;
-        }
-    }
-
-    mixin template ColorBlend(Pipeline.ColorBlendStateCreateInfo cs) {
-        private Pipeline.ColorBlendStateCreateInfo colorBlendState () {
-            return cs;
+    mixin template Info(CreateInfo info_) {
+        private CreateInfo info () {
+            return info_;
         }
     }
 
@@ -120,6 +112,7 @@ class Material {
             };
             this.pipelineLayout = new PipelineLayout(VDevice(), pipelineLayoutCreateInfo);
 
+            auto i = info();
             Pipeline.GraphicsCreateInfo pipelineCreateInfo = {
                 vertexInputState: vertexInputState!(This),
                 inputAssemblyState: {
@@ -145,10 +138,11 @@ class Material {
                         }
                     }]
                 },
-                rasterizationState: rasterizationState,
-                multisampleState: multisampleState,
-                depthStencilState: depthStencilState,
-                colorBlendState: colorBlendState,
+                rasterizationState: i.rasterization,
+                tessellationState: i.tessellation,
+                multisampleState: i.multisample,
+                depthStencilState: i.depthStencil,
+                colorBlendState: i.colorBlend,
                 layout: pipelineLayout,
                 renderPass: RenderPassType(window),
                 subpass: 0,

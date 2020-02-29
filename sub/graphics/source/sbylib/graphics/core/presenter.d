@@ -6,9 +6,9 @@ import sbylib.event;
 import sbylib.wrapper.glfw : Window;
 import sbylib.wrapper.freeimage : FIImage = Image, FIImageType = ImageType;
 import sbylib.wrapper.vulkan;
-import sbylib.graphics.wrapper.device;
 import sbylib.graphics.util.functions;
 import sbylib.graphics.wrapper;
+import sbylib.graphics.wrapper : Image;
 
 class Presenter {
 

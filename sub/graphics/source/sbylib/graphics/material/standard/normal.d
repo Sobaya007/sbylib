@@ -41,46 +41,42 @@ class NormalMaterial : Material {
         vec3 normal;
     }
 
-    immutable Pipeline.RasterizationStateCreateInfo rs = {
-        depthClampEnable: false,
-        rasterizerDiscardEnable: false,
-        polygonMode: PolygonMode.Fill,
-        cullMode: CullMode.None,
-        frontFace: FrontFace.CounterClockwise,
-        depthBiasEnable: false,
-        depthBiasConstantFactor: 0.0f,
-        depthBiasClamp: 0.0f,
-        depthBiasSlopeFactor: 0.0f,
-        lineWidth: 1.0f,
+    immutable CreateInfo i = {
+        rasterization: {
+            depthClampEnable: false,
+            rasterizerDiscardEnable: false,
+            polygonMode: PolygonMode.Fill,
+            cullMode: CullMode.None,
+            frontFace: FrontFace.CounterClockwise,
+            depthBiasEnable: false,
+            depthBiasConstantFactor: 0.0f,
+            depthBiasClamp: 0.0f,
+            depthBiasSlopeFactor: 0.0f,
+            lineWidth: 1.0f,
+        },
+        multisample: {
+            rasterizationSamples: SampleCount.Count1,
+            sampleShadingEnable: false,
+            alphaToCoverageEnable: false,
+            alphaToOneEnable: false,
+        },
+        depthStencil: {
+            depthTestEnable: true,
+            depthWriteEnable: true,
+            depthCompareOp: CompareOp.Less,
+        },
+        colorBlend: {
+            logicOpEnable: false,
+            attachments: [{
+                blendEnable: false,
+                colorWriteMask: ColorComponent.R
+                              | ColorComponent.G
+                              | ColorComponent.B
+                              | ColorComponent.A,
+            }]
+        }
     };
-    mixin Rasterization!(rs);
-
-    immutable Pipeline.MultisampleStateCreateInfo ms = {
-        rasterizationSamples: SampleCount.Count1,
-        sampleShadingEnable: false,
-        alphaToCoverageEnable: false,
-        alphaToOneEnable: false,
-    };
-    mixin Multisample!(ms);
-
-    immutable Pipeline.DepthStencilStateCreateInfo ds = {
-        depthTestEnable: true,
-        depthWriteEnable: true,
-        depthCompareOp: CompareOp.Less,
-    };
-    mixin DepthStencil!(ds);
-
-    immutable Pipeline.ColorBlendStateCreateInfo cs = {
-        logicOpEnable: false,
-        attachments: [{
-            blendEnable: false,
-            colorWriteMask: ColorComponent.R
-                          | ColorComponent.G
-                          | ColorComponent.B
-                          | ColorComponent.A,
-        }]
-    };
-    mixin ColorBlend!(cs);
+    mixin Info!i;
 
     struct VertexUniform {
         mat4 worldMatrix;

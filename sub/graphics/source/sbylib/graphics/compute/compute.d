@@ -76,12 +76,8 @@ class Compute {
                 this.commandBuffer = VCommandBuffer.allocate(VCommandBuffer.Type.Compute);
             }
 
-            auto dispatch(int x, int y, int z) {
-                with (commandBuffer()) {
-                    cmdBindPipeline(PipelineBindPoint.Compute, pipeline);
-                    cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
-                    cmdDispatch(x, y, z);
-                }
+            auto dispatch(int[3] xyz) {
+                record(xyz);
                 auto fence = queue.submitWithFence(commandBuffer, "dispatch");
                 struct Job {
                     VFence fence;
@@ -96,6 +92,26 @@ class Compute {
                     }
                 }
                 return Job(fence);
+            }
+
+            auto dispatch(int[3] xyz, VFence fence) {
+                record(xyz);
+                struct Job {
+                    VFence fence;
+
+                    void wait() {
+                        fence.wait();
+                    }
+                }
+                return Job(fence);
+            }
+
+            private void record(int[3] xyz) {
+                with (commandBuffer()) {
+                    cmdBindPipeline(PipelineBindPoint.Compute, pipeline);
+                    cmdBindDescriptorSets(PipelineBindPoint.Compute, pipelineLayout, 0, [descriptorSet]);
+                    cmdDispatch(xyz[0], xyz[1], xyz[2]);
+                }
             }
         }
     }

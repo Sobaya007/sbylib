@@ -26,7 +26,7 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
             data[] = x[];
         }
 
-        auto job = dispatch(256/16, 1, 1);
+        auto job = dispatch([256/16, 1, 1]);
         job.wait();
 
         with (output.map) {
