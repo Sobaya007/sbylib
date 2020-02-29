@@ -185,6 +185,7 @@ mixin template ImplDescriptor() {
             counts.require(memberInfo.getUDA!(type).type, 0)++;
         }
         DescriptorPool.CreateInfo createInfo = {
+            flags: VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, // to free descriptor set
             maxSets: maxObjects
         };
         foreach (type, count; counts) {

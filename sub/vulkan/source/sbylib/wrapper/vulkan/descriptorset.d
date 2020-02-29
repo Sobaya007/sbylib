@@ -93,6 +93,10 @@ class DescriptorSet {
         this.descriptorSet = descriptorSet;
     }
 
+    ~this() {
+        enforceVK(vkFreeDescriptorSets(device.device, descriptorPool.descriptorPool, 1, &descriptorSet));
+    }
+
     mixin VkTo!(VkDescriptorSet);
 
     static DescriptorSet[] allocate(Device device, AllocateInfo _info) {

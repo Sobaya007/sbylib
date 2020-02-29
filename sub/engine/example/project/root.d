@@ -19,18 +19,20 @@ void root(Project proj, ModuleContext context, Window window, string resourceDir
     setupFloor(context, window, camera);
     setupBox(context, window, camera, resourceDir);
 
-    with (TestCompute()) {
-        auto x = iota(256).map!(i => TestCompute.Data(vec3(i),vec3(i),i)).array;
-        with (input.map) {
-            len = 100;
-            data[] = x[];
-        }
+    foreach (i; 0..10) {
+        with (TestCompute()) {
+            auto x = iota(256).map!(i => TestCompute.Data(vec3(i),vec3(i),i)).array;
+            with (input.map) {
+                len = 100;
+                data[] = x[];
+            }
 
-        auto job = dispatch([256/16, 1, 1]);
-        job.wait();
+            auto job = dispatch([256/16, 1, 1]);
+            job.wait();
 
-        with (output.map) {
-            assert(data == x);
+            with (output.map) {
+                assert(data == x);
+            }
         }
     }
 
